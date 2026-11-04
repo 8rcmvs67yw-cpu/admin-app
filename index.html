@@ -1110,16 +1110,13 @@
         </div>
         
 <script>
-            // THAY LINK WEB APP CỦA BẠN VÀO ĐÂY (Link Google Apps Script Deployment có đuôi /exec)
-            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec"; 
+            <script>
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYl6BARU3jGNdTrdRMTi1P0WKno-tXUDaLMk0z6anMWSrzEfX6ygw0p_S-HzD0fgwU/exec";
 
-            // Hàm gọi API kiểm tra trạng thái ngay sau khi giao diện load bằng chuẩn REST API (fetch)
+            // Hàm gọi API kiểm tra trạng thái ngay sau khi giao diện load qua REST API fetch()
             (function checkSystemStatus() {
                 fetch(SCRIPT_URL + "?action=getSystemStatusAPI", {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "text/plain;charset=utf-8",
-                    }
+                    method: "GET"
                 })
                 .then(response => response.json())
                 .then(res => {
@@ -1144,11 +1141,10 @@
                     if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
                     if (txt) { txt.innerText = 'DISCONNECTED'; txt.style.color = '#FFB3B3'; }
                     if (sub) { sub.innerText = 'Lỗi kết nối máy chủ Google'; }
-                    console.error("Lỗi kết nối Fetch API:", err);
+                    console.error("Lỗi fetch:", err);
                 });
             })();
-        </script>
-        
+        </script>     
         <!-- Cụm Logo & Chữ (Căn giữa nửa màn hình trái) -->
         <div style="display: flex; flex-direction: column; align-items: flex-start; z-index: 2; transform: translateY(-40px) translateX(-15px);">
           <!-- Logo Lotte gốc (Màu đỏ) & Căn chỉnh tâm khớp với đường kẻ dọc -->
