@@ -11081,16 +11081,26 @@ function logoutUser() {
         });
       }
     }
-        <script>
+       <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYl6BARU3jGNdTrdRMTi1P0WKno-tXUDaLMk0z6anMWSrzEfX6ygw0p_S-HzD0fgwU/exec?app=admin";
   
-  // Gọi API lấy dữ liệu qua HTTP fetch chuẩn cho GitHub Pages
+  // Gọi kiểm tra trạng thái CSDL qua HTTP fetch
   fetch(SCRIPT_URL)
     .then(response => response.json())
     .then(data => {
-      console.log("Đã kết nối Google Sheets thành công:", data);
+      console.log("Kết nối CSDL thành công:", data);
+      let dot = document.getElementById('sys_status_dot');
+      let txt = document.getElementById('sys_status_text');
+      if (dot) dot.style.background = '#34C759';
+      if (txt) { txt.innerText = 'SYSTEM ONLINE'; txt.style.color = 'rgba(255, 255, 255, 0.95)'; }
     })
-    .catch(error => console.error("Lỗi kết nối API:", error));
+    .catch(error => {
+      console.error("Lỗi kết nối CSDL:", error);
+      let dot = document.getElementById('sys_status_dot');
+      let txt = document.getElementById('sys_status_text');
+      if (dot) dot.style.background = '#E60012';
+      if (txt) { txt.innerText = 'DISCONNECTED'; txt.style.color = '#FFB3B3'; }
+    });
 </script>
 </body>
 </html>
