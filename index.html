@@ -11073,7 +11073,6 @@ function logoutUser() {
         ticketId: currentAdmTicketId, newStatus: newSt, assignee: localStorage.getItem('userId')
       });
     }
-
     function transferTicketDepartment() {
       const newDept = prompt("Chuyển yêu cầu này sang bộ phận nào? (Nhập: DVKH, B2B_SALE, ADMIN)", "DVKH");
       if (newDept && ['DVKH', 'B2B_SALE', 'ADMIN'].includes(newDept.toUpperCase())) {
