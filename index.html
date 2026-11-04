@@ -1109,38 +1109,44 @@
             </div>
         </div>
         
-        <script>
-            // Hàm gọi API kiểm tra trạng thái ngay sau khi giao diện load
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec"; // THAY LINK CỦA BẠN VÀO ĐÂY
+<script>
+            // THAY LINK WEB APP CỦA BẠN VÀO ĐÂY (Link Google Apps Script Deployment có đuôi /exec)
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec"; 
 
-(function checkSystemStatus() {
-    fetch(SCRIPT_URL + "?action=getSystemStatusAPI")
-        .then(response => response.json())
-        .then(res => {
-            let dot = document.getElementById('sys_status_dot');
-            let txt = document.getElementById('sys_status_text');
-            let sub = document.getElementById('sys_status_subtext');
-            
-            if (res && res.success) {
-                if (dot) { dot.style.background = '#34C759'; dot.style.animation = 'greenPulse 2s infinite'; }
-                if (txt) { txt.innerText = 'SYSTEM ONLINE'; txt.style.color = 'rgba(255, 255, 255, 0.95)'; }
-                if (sub) { sub.innerHTML = res.branch + ' &bull; ' + res.version; }
-            } else {
-                if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
-                if (txt) { txt.innerText = 'SYSTEM OFFLINE'; txt.style.color = '#FFB3B3'; }
-                if (sub) { sub.innerText = 'Lỗi truy cập dữ liệu hệ thống'; }
-            }
-        })
-        .catch(err => {
-            let dot = document.getElementById('sys_status_dot');
-            let txt = document.getElementById('sys_status_text');
-            let sub = document.getElementById('sys_status_subtext');
-            if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
-            if (txt) { txt.innerText = 'DISCONNECTED'; txt.style.color = '#FFB3B3'; }
-            if (sub) { sub.innerText = 'Lỗi kết nối máy chủ Google'; }
-            console.error("Lỗi fetch:", err);
-        });
-})();
+            // Hàm gọi API kiểm tra trạng thái ngay sau khi giao diện load bằng chuẩn REST API (fetch)
+            (function checkSystemStatus() {
+                fetch(SCRIPT_URL + "?action=getSystemStatusAPI", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "text/plain;charset=utf-8",
+                    }
+                })
+                .then(response => response.json())
+                .then(res => {
+                    let dot = document.getElementById('sys_status_dot');
+                    let txt = document.getElementById('sys_status_text');
+                    let sub = document.getElementById('sys_status_subtext');
+                    
+                    if (res && res.success) {
+                        if (dot) { dot.style.background = '#34C759'; dot.style.animation = 'greenPulse 2s infinite'; }
+                        if (txt) { txt.innerText = 'SYSTEM ONLINE'; txt.style.color = 'rgba(255, 255, 255, 0.95)'; }
+                        if (sub) { sub.innerHTML = res.branch + ' &bull; ' + res.version; }
+                    } else {
+                        if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
+                        if (txt) { txt.innerText = 'SYSTEM OFFLINE'; txt.style.color = '#FFB3B3'; }
+                        if (sub) { sub.innerText = res.message || 'Lỗi truy cập dữ liệu hệ thống'; }
+                    }
+                })
+                .catch(err => {
+                    let dot = document.getElementById('sys_status_dot');
+                    let txt = document.getElementById('sys_status_text');
+                    let sub = document.getElementById('sys_status_subtext');
+                    if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
+                    if (txt) { txt.innerText = 'DISCONNECTED'; txt.style.color = '#FFB3B3'; }
+                    if (sub) { sub.innerText = 'Lỗi kết nối máy chủ Google'; }
+                    console.error("Lỗi kết nối Fetch API:", err);
+                });
+            })();
         </script>
         
         <!-- Cụm Logo & Chữ (Căn giữa nửa màn hình trái) -->
@@ -9976,218 +9982,106 @@ let html = '';
 // LOGIC XỬ LÝ ĐĂNG NHẬP (FRONTEND STATE)
 // ==============================================================
 function executeLogin(btnElement) {
-    let user = document.getElementById("loginUser").value.trim();
-    let pass = document.getElementById("loginPass").value.trim();
-
-    if (!user || !pass) {
-        alert("Vui lòng nhập đầy đủ tài khoản và mật khẩu!");
+    let user = document.getElementById('loginUser').value.trim();
+    let pass = document.getElementById('loginPass').value;
+    
+    if(!user || !pass) {
+        macUI.alert("Vui lòng nhập đầy đủ Account ID và Mật khẩu!", "Lỗi Đăng Nhập");
         return;
     }
 
     let originalText = btnElement.innerHTML;
-    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang đăng nhập...';
-    btnElement.disabled = true;
-
-    // Đóng gói tham số gửi xuống hàm doPost() của Google
-    let payload = {
-        action: "checkLoginAPI",
-        user: user,
-        pass: pass
-    };
-
-    fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" }, // TUYỆT ĐỐI KHÔNG DÙNG "application/json" để lách CORS
-        body: JSON.stringify(payload)
-    })
-    .then(response => response.json())
-    .then(res => {
-        btnElement.innerHTML = originalText;
-        btnElement.disabled = false;
-
-        if (res && res.success) {
-            alert("Đăng nhập thành công! Quyền: " + res.role);
-            document.getElementById("lotteLoginOverlay").style.display = "none";
-        } else {
-            alert("Lỗi: " + (res.message || "Đăng nhập thất bại"));
-        }
-    })
-    .catch(err => {
-        btnElement.innerHTML = originalText;
-        btnElement.disabled = false;
-        alert("Lỗi kết nối mạng!");
-        console.error(err);
-    });
-}
-// 1. Đóng gói dữ liệu để gửi lên Google
-        let payload = {
-            action: "checkLoginAPI",
-            user: user,
-            pass: pass
-        };
-
-        // 2. Gọi API bằng hàm fetch()
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" }, // Bắt buộc dùng text/plain để tránh lỗi CORS
-            body: JSON.stringify(payload)
-        })
-        .then(response => response.json())
-        .then(res => {
-            // Phục hồi lại trạng thái nút bấm
-            btnElement.innerHTML = originalText;
-            btnElement.style.opacity = '1';
-            btnElement.disabled = false;
-
-            if (res && res.success) {
-                // XỬ LÝ LOGIC "GHI NHỚ ĐĂNG NHẬP"
-                if (document.getElementById('rememberMe').checked) {
-                    localStorage.setItem('savedUser', user);
-                    localStorage.setItem('savedPass', pass);
-                } else {
-                    localStorage.removeItem('savedUser');
-                    localStorage.removeItem('savedPass');
-                }
-                localStorage.removeItem('actionPass');
-                
-                // Hiển thị thông báo và cho vào hệ thống
-                alert("Đăng nhập thành công! Quyền: " + res.role);
-                document.getElementById("lotteLoginOverlay").style.display = "none";
-                
-                // Nếu có hàm khởi tạo dữ liệu sau khi đăng nhập thì gọi ở đây
-                // Ví dụ: loadDataRealtime();
-            } else {
-                alert("Lỗi: " + (res.message || "Đăng nhập thất bại"));
-            }
-        })
-        .catch(err => {
-            // Bắt lỗi khi mất mạng hoặc sai link SCRIPT_URL
-            macUI.alert("Lỗi kết nối máy chủ: " + err.message + "\n\nKiểm tra lại mạng hoặc link SCRIPT_URL.", "Lỗi Kết Nối");
-            btnElement.innerHTML = originalText;
-            btnElement.style.opacity = '1';
-            btnElement.disabled = false;
-        });
-// ==============================================================
-// LOGIC XỬ LÝ ĐĂNG NHẬP VÀ ĐĂNG XUẤT (CHẠY ĐỘC LẬP TRÊN TÊN MIỀN RIÊNG)
-// ==============================================================
-
-// --- HÀM XỬ LÝ ĐĂNG NHẬP ---
-function executeLogin(btnElement) {
-    let user = document.getElementById("loginUser").value.trim();
-    let pass = document.getElementById("loginPass").value.trim();
-
-    if (!user || !pass) {
-        alert("Vui lòng nhập đầy đủ tài khoản và mật khẩu!");
-        return;
-    }
-
-    // Đổi trạng thái nút bấm thành Loading...
-    let originalText = btnElement.innerHTML;
-    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang đăng nhập...';
+    btnElement.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang xác thực...';
+    btnElement.style.background = '#008081';
     btnElement.style.opacity = '0.7';
     btnElement.disabled = true;
 
-    // Đóng gói tham số gửi xuống hàm doPost() của Google Apps Script
-    let payload = {
-        action: "checkLoginAPI",
-        user: user,
-        pass: pass
-    };
-
-    // Gọi API qua giao thức fetch chuẩn (Thay thế google.script.run)
-    fetch(SCRIPT_URL, {
-        method: "POST",
-        // LƯU Ý BẢO MẬT: Bắt buộc dùng "text/plain" để không bị trình duyệt chặn bởi chính sách CORS (Preflight OPTIONS)
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payload)
-    })
-    .then(response => response.json())
-    .then(res => {
-        // Phục hồi lại trạng thái nút bấm
+    google.script.run
+    .withFailureHandler(err => {
+        // Bắt lỗi khi máy chủ Google từ chối thực thi (Do thiếu quyền hoặc sai cú pháp)
+        macUI.alert("Lỗi máy chủ: " + err.message + "\n\n💡 Mẹo: Hãy quay lại tab Apps Script, chọn một hàm bất kỳ và bấm nút 'Chạy' để cấp quyền cho hệ thống.", "Lỗi Kết Nối");
         btnElement.innerHTML = originalText;
         btnElement.style.opacity = '1';
         btnElement.disabled = false;
-
-        // Nếu thông tin tài khoản hợp lệ
-        if (res && res.success) {
-            
-            // XỬ LÝ LOGIC "GHI NHỚ ĐĂNG NHẬP" VÀO TRÌNH DUYỆT (LOCAL STORAGE)
-            if (document.getElementById('rememberMe') && document.getElementById('rememberMe').checked) {
+    })
+    .withSuccessHandler(res => {
+        if(res.success) {
+// XỬ LÝ LOGIC "GHI NHỚ ĐĂNG NHẬP"
+            if (document.getElementById('rememberMe').checked) {
                 localStorage.setItem('savedUser', user);
                 localStorage.setItem('savedPass', pass);
             } else {
                 localStorage.removeItem('savedUser');
                 localStorage.removeItem('savedPass');
             }
-            
-            // Xóa pass xác thực xóa sửa đơn (nếu có lưu từ phiên làm việc trước)
             localStorage.removeItem('actionPass');
+
+            // Lưu thông tin Phân quyền vào LocalStorage
+            localStorage.setItem('userId', user);
+            localStorage.setItem('userBranch', res.branch);
+            localStorage.setItem('userRole', res.role);
             
-            // Hiển thị thông báo thành công và cho phép người dùng vào hệ thống
-            alert("Đăng nhập thành công! Quyền hạn của bạn là: " + res.role);
-            let loginOverlay = document.getElementById("lotteLoginOverlay");
-            if (loginOverlay) {
-                loginOverlay.style.display = "none";
-            }
-            
-            // (Tùy chọn) Gọi hàm khởi tạo dữ liệu ngay sau khi đăng nhập thành công
-            if (typeof loadDataRealtime === "function") {
+            document.getElementById('pageSubtitle').innerText = "Cửa hàng: " + res.branch;
+
+            let overlay = document.getElementById('lotteLoginOverlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                btnElement.innerHTML = originalText;
+                btnElement.style.opacity = '1';
+                btnElement.disabled = false;
+                // Kích hoạt phân quyền ngay sau khi đăng nhập
+                applyPermissionsUI();
+                // Bắt đầu load dữ liệu
                 loadDataRealtime();
-            }
-            if (typeof initOrRefreshExecDashboard === "function") {
-                initOrRefreshExecDashboard();
-            }
-            
+            }, 600);
         } else {
-            // Mật khẩu sai hoặc tài khoản không tồn tại
-            alert("Lỗi: " + (res.message || "Tài khoản hoặc mật khẩu không chính xác."));
+            macUI.alert(res.message, "Sai thông tin");
+            btnElement.innerHTML = originalText;
+            btnElement.style.opacity = '1';
+            btnElement.disabled = false;
         }
-    })
-    .catch(err => {
-        // Bắt lỗi khi mất mạng hoặc sai link Web App SCRIPT_URL
-        btnElement.innerHTML = originalText;
-        btnElement.style.opacity = '1';
-        btnElement.disabled = false;
-        
-        if (typeof macUI !== 'undefined') {
-             macUI.alert("Máy chủ không phản hồi: " + err.message + "\n\nKiểm tra lại kết nối mạng hoặc đường link SCRIPT_URL của bạn.", "Lỗi Kết Nối");
-        } else {
-             alert("Lỗi kết nối mạng hoặc máy chủ! Vui lòng thử lại.");
-        }
-        console.error("Lỗi fetch (executeLogin):", err);
-    });
+    }).checkLoginAPI(user, pass);
 }
 
 // --- HÀM XỬ LÝ ĐĂNG XUẤT ---
 function logoutUser() {
-    if (typeof macUI !== 'undefined') {
-        macUI.confirm("Bạn có chắc chắn muốn đăng xuất và trở về màn hình đăng nhập không?", "Xác nhận Đăng xuất").then(yes => {
-            if(yes) {
-                processLogout();
+    macUI.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Xác nhận Đăng xuất").then(yes => {
+        if(yes) {
+            // 1. Xóa sạch bộ nhớ tạm
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userBranch');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('actionPass'); // Xóa mật khẩu khi đăng xuất
+            
+            // 2. Dừng bộ đếm load data realtime
+            if (typeof autoTimer !== 'undefined') {
+                clearInterval(autoTimer);
             }
-        });
-    } else {
-        if(confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
-            processLogout();
+            
+            // 3. Hiển thị lại màn hình Đăng nhập ngay lập tức và phục hồi độ sáng
+            let overlay = document.getElementById('lotteLoginOverlay');
+            overlay.style.display = 'flex';
+            
+            // Ép trình duyệt render lại frame trước khi đổi opacity để hiệu ứng mượt mà
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+            });
+            
+            // 4. Đăng xuất "mềm" (Soft Reset): Khôi phục UI thay vì dùng lệnh reload để tránh lỗi trắng trang của Google
+            setTimeout(() => {
+                document.getElementById('loginPass').value = ''; // Xóa trắng mật khẩu
+                
+                // Xóa dữ liệu cũ trên màn hình để bảo mật thông tin
+                document.getElementById('gridContainer').innerHTML = '';
+                document.getElementById('vatTableBody').innerHTML = '';
+                document.getElementById('historyTableBody').innerHTML = '';
+                
+                // Đưa UI về lại tab Nhập liệu mặc định ban đầu
+                document.querySelectorAll('.menu-item')[0].click();
+            }, 400);
         }
-    }
-}
-
-// Hàm lõi thực hiện xóa dữ liệu và reset giao diện
-function processLogout() {
-    // 1. Xóa sạch mọi token, thông tin User trong bộ nhớ tạm của trình duyệt
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userBranch');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('actionPass'); 
-    
-    // 2. Dừng bộ đếm làm mới dữ liệu tự động (Nếu hệ thống có bật auto-refresh)
-    if (typeof autoTimer !== 'undefined' && autoTimer !== null) {
-        clearInterval(autoTimer);
-    }
-    
-    // 3. Tải lại trang hoàn toàn để ép hệ thống đưa User về lại màn hình Đăng nhập
-    window.location.reload();
+    });
 }
 // --- HÀM XỬ LÝ ĐÓNG MỞ ACCORDION ---
     function toggleAccordion(stepId) {
