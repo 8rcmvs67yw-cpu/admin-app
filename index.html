@@ -1108,46 +1108,152 @@
                 Đang kiểm tra kết nối CSDL...
             </div>
         </div>
-  <script>
-            // Thay bằng link Web App URL mới của anh
+<script>
+            // Link Web App URL (/exec) chính thức của Google Apps Script
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYl6BARU3jGNdTrdRMTi1P0WKno-tXUDaLMk0z6anMWSrzEfX6ygw0p_S-HzD0fgwU/exec";
 
-            // Hàm gọi API kiểm tra trạng thái ngay sau khi giao diện load qua REST API fetch()
-            (function checkSystemStatus() {
-                fetch(SCRIPT_URL + "?action=getSystemStatusAPI", {
-                    method: "GET"
-                })
-                .then(response => response.text()) 
-                .then(text => {
-                    try {
-                        let res = JSON.parse(text);
-                        let dot = document.getElementById('sys_status_dot');
-                        let txt = document.getElementById('sys_status_text');
-                        let sub = document.getElementById('sys_status_subtext');
-                        
-                        if (res && res.success) {
-                            if (dot) { dot.style.background = '#34C759'; dot.style.animation = 'greenPulse 2s infinite'; }
-                            if (txt) { txt.innerText = 'SYSTEM ONLINE'; txt.style.color = 'rgba(255, 255, 255, 0.95)'; }
-                            if (sub) { sub.innerHTML = res.branch + ' &bull; ' + res.version; }
-                        } else {
-                            if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
-                            if (txt) { txt.innerText = 'SYSTEM OFFLINE'; txt.style.color = '#FFB3B3'; }
-                            if (sub) { sub.innerText = res.message || 'Lỗi truy cập dữ liệu hệ thống'; }
+            // 1. BỘ ĐÁNH CHẶN FETCH THÔNG MINH: Chống lỗi "Failed to fetch" do CORS & 302 Redirect khi chạy trên admin.quan-workspace.com hoặc file://
+            (function installSmartAppsScriptFetch() {
+                const nativeFetch = window.fetch.bind(window);
+                window.fetch = function(resource, init) {
+                    const urlStr = typeof resource === "string" ? resource : (resource && resource.url ? resource.url : "");
+                    if (urlStr.indexOf("script.google.com/macros/s/") !== -1) {
+                        const safeInit = Object.assign({}, init || {});
+                        safeInit.mode = "cors";
+                        safeInit.redirect = "follow";
+                        safeInit.credentials = "omit";
+
+                        const method = (safeInit.method || "GET").toUpperCase();
+                        if (method === "POST") {
+                            safeInit.headers = { "Content-Type": "text/plain;charset=utf-8" };
+                            const bodyStr = typeof safeInit.body === "string" ? safeInit.body : "";
+
+                            if (window.location.protocol === "file:" && bodyStr.length > 0 && bodyStr.length < 1800) {
+                                const sep = urlStr.indexOf("?") === -1 ? "?" : "&";
+                                return nativeFetch(urlStr + sep + "payload=" + encodeURIComponent(bodyStr), {
+                                    method: "GET",
+                                    mode: "cors",
+                                    redirect: "follow",
+                                    credentials: "omit"
+                                });
+                            }
+
+                            return nativeFetch(urlStr, safeInit).catch(function(postErr) {
+                                if (bodyStr.length > 0 && bodyStr.length < 1800) {
+                                    const sep = urlStr.indexOf("?") === -1 ? "?" : "&";
+                                    return nativeFetch(urlStr + sep + "payload=" + encodeURIComponent(bodyStr), {
+                                        method: "GET",
+                                        mode: "cors",
+                                        redirect: "follow",
+                                        credentials: "omit"
+                                    });
+                                }
+                                throw postErr;
+                            });
                         }
-                    } catch (e) {
-                        console.error("Lỗi Parse JSON! Google đang trả về:", text);
-                        throw new Error("Backend chưa trả về định dạng JSON hợp lệ.");
+                        return nativeFetch(urlStr, safeInit);
                     }
-                })
-                .catch(err => {
+                    return nativeFetch(resource, init);
+                };
+            })();
+
+            // 2. CẦU NỐI TỰ ĐỘNG (POLYFILL): Tự động chuyển mọi lệnh google.script.run sang fetch() khi chạy trên tên miền riêng (admin.quan-workspace.com)
+            (function initExternalDomainBridge() {
+                if (typeof window.google !== "undefined" && window.google.script && window.google.script.run) {
+                    return; // Đang chạy trực tiếp trong iframe của Google Apps Script thì giữ nguyên kênh native
+                }
+                function createRunner(successHandler, failureHandler, userObject) {
+                    return new Proxy({}, {
+                        get: function(target, prop) {
+                            if (prop === "withSuccessHandler") {
+                                return function(fn) { return createRunner(fn, failureHandler, userObject); };
+                            }
+                            if (prop === "withFailureHandler") {
+                                return function(fn) { return createRunner(successHandler, fn, userObject); };
+                            }
+                            if (prop === "withUserObject") {
+                                return function(obj) { return createRunner(successHandler, failureHandler, obj); };
+                            }
+                            return function() {
+                                const args = Array.prototype.slice.call(arguments);
+                                window.fetch(SCRIPT_URL, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                                    body: JSON.stringify({ action: String(prop), args: args }),
+                                    redirect: "follow"
+                                })
+                                .then(function(response) { return response.text(); })
+                                .then(function(text) {
+                                    let data;
+                                    try {
+                                        data = JSON.parse(text);
+                                    } catch (parseErr) {
+                                        throw new Error("Phản hồi từ Google Apps Script không phải JSON hợp lệ. Hãy kiểm tra lại quyền Deploy (Anyone) và cập nhật New Version.");
+                                    }
+                                    if (data && data.__rpcError) {
+                                        if (typeof failureHandler === "function") failureHandler(new Error(data.message || "Lỗi thực thi API"), userObject);
+                                        else console.error("GAS RPC Error [" + String(prop) + "]:", data.message);
+                                        return;
+                                    }
+                                    if (typeof successHandler === "function") {
+                                        successHandler(data, userObject);
+                                    }
+                                })
+                                .catch(function(err) {
+                                    if (typeof failureHandler === "function") {
+                                        failureHandler(err, userObject);
+                                    } else {
+                                        console.error("Lỗi kết nối API [" + String(prop) + "]:", err);
+                                    }
+                                });
+                            };
+                        }
+                    });
+                }
+                window.google = {
+                    script: {
+                        run: createRunner(null, null, undefined)
+                    }
+                };
+            })();
+
+            // 3. Hàm kiểm tra trạng thái hệ thống (Hoạt động trên cả Google Apps Script /dev, /exec và tên miền riêng admin.quan-workspace.com)
+            (function checkSystemStatus() {
+                function renderStatusUI(res) {
+                    let dot = document.getElementById('sys_status_dot');
+                    let txt = document.getElementById('sys_status_text');
+                    let sub = document.getElementById('sys_status_subtext');
+                    if (res && res.success) {
+                        if (dot) { dot.style.background = '#34C759'; dot.style.animation = 'greenPulse 2s infinite'; }
+                        if (txt) { txt.innerText = 'SYSTEM ONLINE'; txt.style.color = 'rgba(255, 255, 255, 0.95)'; }
+                        if (sub) { sub.innerHTML = res.branch + ' &bull; ' + res.version; }
+                    } else {
+                        if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
+                        if (txt) { txt.innerText = 'SYSTEM OFFLINE'; txt.style.color = '#FFB3B3'; }
+                        if (sub) { sub.innerText = (res && res.message) ? res.message : 'Lỗi truy cập dữ liệu hệ thống'; }
+                    }
+                }
+                function renderErrorUI(err) {
                     let dot = document.getElementById('sys_status_dot');
                     let txt = document.getElementById('sys_status_text');
                     let sub = document.getElementById('sys_status_subtext');
                     if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
                     if (txt) { txt.innerText = 'DISCONNECTED'; txt.style.color = '#FFB3B3'; }
                     if (sub) { sub.innerText = 'Lỗi kết nối máy chủ Google'; }
-                    console.error("Lỗi fetch:", err.message);
-                });
+                    console.error("Lỗi kiểm tra trạng thái:", err && err.message ? err.message : err);
+                }
+
+                if (typeof google !== "undefined" && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(renderStatusUI)
+                        .withFailureHandler(renderErrorUI)
+                        .getSystemStatusAPI();
+                } else {
+                    window.fetch(SCRIPT_URL + "?action=getSystemStatusAPI", { method: "GET" })
+                        .then(response => response.json())
+                        .then(renderStatusUI)
+                        .catch(renderErrorUI);
+                }
             })();
         </script>
         <!-- Cụm Logo & Chữ (Căn giữa nửa màn hình trái) -->
@@ -1472,9 +1578,9 @@
                     <div style="display: grid; grid-template-columns: 1fr 2.5fr; gap: 10px; margin-bottom: 10px;">
                         <!-- Ô Số điện thoại -->
                         <div class="b2b-input-group" style="margin-bottom:0;">
-                            <label>Số điện thoại <span style="color:var(--lotte-red);">*</span></label>
+                            <label>Số điện thoại</label>
                             <div class="b2b-input-wrapper" style="background: var(--apple-bg);">
-                                <input type="text" id="phoneInput" name="phone" placeholder="Nhập SĐT..." maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                                <input type="text" id="phoneInput" name="phone" placeholder="Nhập SĐT..." maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                             </div>
                         </div>
                         <!-- Ô Địa chỉ -->
@@ -6042,19 +6148,22 @@ let pickCellHTML = '';
             }
         });
     }
-    // Tải từ điển từ Google Sheets (Chỉ chạy 1 lần duy nhất khi mở Web)
+    // Tải từ điển từ Google Sheets (Tương thích cả Google Apps Script và tên miền riêng)
     function loadTranslations() {
-        fetch(SCRIPT_URL + "?action=getTranslationsAPI", { method: "GET" })
-        .then(res => res.json())
-        .then(dict => {
-            i18nDict = dict;
-            applyLanguage(currentLang); // Áp dụng ngay sau khi tải xong
-        })
-        .catch(err => {
-            console.error("Lỗi tải từ điển:", err);
-            // Nếu lỗi, vẫn áp dụng ngôn ngữ mặc định (tiếng Việt không cần dịch)
-            applyLanguage(currentLang); 
-        });
+        if (typeof google !== "undefined" && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(dict => {
+                    i18nDict = dict || {};
+                    applyLanguage(currentLang);
+                })
+                .withFailureHandler(err => {
+                    console.error("Lỗi tải từ điển:", err);
+                    applyLanguage(currentLang);
+                })
+                .getTranslationsAPI();
+        } else {
+            applyLanguage(currentLang);
+        }
     }
     
     // Khởi chạy tải ngôn ngữ
@@ -11086,7 +11195,7 @@ function logoutUser() {
         ticketId: currentAdmTicketId, newStatus: newSt, assignee: localStorage.getItem('userId')
       });
     }
-    function transferTicketDepartment() {
+   function transferTicketDepartment() {
       const newDept = prompt("Chuyển yêu cầu này sang bộ phận nào? (Nhập: DVKH, B2B_SALE, ADMIN)", "DVKH");
       if (newDept && ['DVKH', 'B2B_SALE', 'ADMIN'].includes(newDept.toUpperCase())) {
         google.script.run.withSuccessHandler(() => loadAdminSupportTickets()).updateSupportTicketStatusAPI({
@@ -11094,16 +11203,6 @@ function logoutUser() {
         });
       }
     }
-  <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYl6BARU3jGNdTrdRMTi1P0WKno-tXUDaLMk0z6anMWSrzEfX6ygw0p_S-HzD0fgwU/exec?app=admin";
-  
-  // Tự động gọi API lấy dữ liệu khi trang được tải
-  fetch(SCRIPT_URL)
-    .then(response => response.json())
-    .then(data => {
-      console.log("Đã kết nối Google Sheets thành công:", data);
-    })
-    .catch(error => console.error("Lỗi kết nối:", error));
-</script>
+  </script>
 </body>
 </html>
