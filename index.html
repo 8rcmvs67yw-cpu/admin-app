@@ -1112,54 +1112,109 @@
             // Link Web App URL (/exec) chính thức của Google Apps Script
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYl6BARU3jGNdTrdRMTi1P0WKno-tXUDaLMk0z6anMWSrzEfX6ygw0p_S-HzD0fgwU/exec";
 
-            // 1. BỘ ĐÁNH CHẶN FETCH THÔNG MINH: Chống lỗi "Failed to fetch" do CORS & 302 Redirect khi chạy trên admin.quan-workspace.com hoặc file://
-            (function installSmartAppsScriptFetch() {
-                const nativeFetch = window.fetch.bind(window);
-                window.fetch = function(resource, init) {
-                    const urlStr = typeof resource === "string" ? resource : (resource && resource.url ? resource.url : "");
-                    if (urlStr.indexOf("script.google.com/macros/s/") !== -1) {
-                        const safeInit = Object.assign({}, init || {});
-                        safeInit.mode = "cors";
-                        safeInit.redirect = "follow";
-                        safeInit.credentials = "omit";
+            // Kiểm tra xem trang có đang chạy trực tiếp bên trong iframe của Google Apps Script hay không
+            const IS_NATIVE_GAS = (typeof window.google !== "undefined" && window.google.script && window.google.script.run);
 
-                        const method = (safeInit.method || "GET").toUpperCase();
-                        if (method === "POST") {
-                            safeInit.headers = { "Content-Type": "text/plain;charset=utf-8" };
-                            const bodyStr = typeof safeInit.body === "string" ? safeInit.body : "";
+            // 1. HÀM GỌI REST API ĐA NĂNG CHO TÊN MIỀN RIÊNG (admin.quan-workspace.com) & FILE LOCAL (file://)
+            function callAppsScriptAPI(actionName, argsArray) {
+                const args = Array.isArray(argsArray) ? argsArray : [];
+                const payloadObj = { action: String(actionName), args: args };
 
-                            if (window.location.protocol === "file:" && bodyStr.length > 0 && bodyStr.length < 1800) {
-                                const sep = urlStr.indexOf("?") === -1 ? "?" : "&";
-                                return nativeFetch(urlStr + sep + "payload=" + encodeURIComponent(bodyStr), {
-                                    method: "GET",
-                                    mode: "cors",
-                                    redirect: "follow",
-                                    credentials: "omit"
-                                });
+                // Đính kèm tham số tường minh để tương thích 100% với cả bản Deploy cũ và bản Deploy mới trên Apps Script
+                if (actionName === "checkLoginAPI") {
+                    payloadObj.user = args[0] !== undefined ? args[0] : "";
+                    payloadObj.pass = args[1] !== undefined ? args[1] : "";
+                } else if (actionName === "saveOrder") {
+                    payloadObj.form = args[0] !== undefined ? args[0] : {};
+                } else if (actionName === "getDashboardData") {
+                    payloadObj.branch = args[0] !== undefined ? args[0] : "ALL";
+                }
+
+                const bodyStr = JSON.stringify(payloadObj);
+                const cleanUrl = SCRIPT_URL.split("?")[0];
+
+                function parseGasText(text) {
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        if (text && (text.indexOf("<!DOCTYPE html>") !== -1 || text.indexOf("<html") !== -1)) {
+                            if (text.indexOf("accounts.google.com") !== -1 || text.indexOf("ServiceLogin") !== -1) {
+                                throw new Error("Bản Deploy trên Apps Script chưa mở quyền 'Bất kỳ ai (Anyone)'.");
                             }
-
-                            return nativeFetch(urlStr, safeInit).catch(function(postErr) {
-                                if (bodyStr.length > 0 && bodyStr.length < 1800) {
-                                    const sep = urlStr.indexOf("?") === -1 ? "?" : "&";
-                                    return nativeFetch(urlStr + sep + "payload=" + encodeURIComponent(bodyStr), {
-                                        method: "GET",
-                                        mode: "cors",
-                                        redirect: "follow",
-                                        credentials: "omit"
-                                    });
-                                }
-                                throw postErr;
-                            });
+                            throw new Error("HTML_FALLBACK_REQUIRED");
                         }
-                        return nativeFetch(urlStr, safeInit);
+                        throw new Error("Phản hồi từ máy chủ không phải định dạng JSON hợp lệ.");
                     }
-                    return nativeFetch(resource, init);
-                };
-            })();
+                    if (data && data.__rpcError) {
+                        throw new Error(data.message || "Lỗi thực thi API trên Google Apps Script.");
+                    }
+                    return data;
+                }
 
-            // 2. CẦU NỐI TỰ ĐỘNG (POLYFILL): Tự động chuyển mọi lệnh google.script.run sang fetch() khi chạy trên tên miền riêng (admin.quan-workspace.com)
+                function buildGetFallbackUrl() {
+                    let qs = "?action=" + encodeURIComponent(actionName);
+                    if (actionName === "getDashboardData" && payloadObj.branch) {
+                        qs += "&branch=" + encodeURIComponent(payloadObj.branch);
+                    } else if (actionName === "checkLoginAPI") {
+                        qs += "&user=" + encodeURIComponent(payloadObj.user) + "&pass=" + encodeURIComponent(payloadObj.pass);
+                    }
+                    if (bodyStr.length < 1800) {
+                        qs += "&payload=" + encodeURIComponent(bodyStr);
+                    }
+                    return cleanUrl + qs;
+                }
+
+                function callViaGet() {
+                    return window.fetch(buildGetFallbackUrl(), {
+                        method: "GET",
+                        mode: "cors",
+                        redirect: "follow",
+                        credentials: "omit"
+                    })
+                    .then(function(r) { return r.text(); })
+                    .then(function(text) {
+                        try {
+                            return parseGasText(text);
+                        } catch (err) {
+                            if (err.message === "HTML_FALLBACK_REQUIRED") {
+                                throw new Error("Link SCRIPT_URL (/exec) chưa được cập nhật 'Phiên bản mới (New version)' trên Google Apps Script.");
+                            }
+                            throw err;
+                        }
+                    });
+                }
+
+                // Các hàm đọc trạng thái hoặc chạy trên giao thức file:// với dữ liệu nhỏ thì ưu tiên gọi GET trực tiếp
+                if (actionName === "getSystemStatusAPI" || actionName === "getTranslationsAPI" || (window.location.protocol === "file:" && bodyStr.length < 1800)) {
+                    return callViaGet();
+                }
+
+                // Gọi POST với text/plain để không phát sinh CORS Preflight OPTIONS; nếu mạng chặn hoặc trả về HTML thì tự động chuyển sang GET
+                return window.fetch(cleanUrl, {
+                    method: "POST",
+                    mode: "cors",
+                    redirect: "follow",
+                    credentials: "omit",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: bodyStr
+                })
+                .then(function(r) { return r.text(); })
+                .then(parseGasText)
+                .catch(function(postErr) {
+                    if (bodyStr.length < 1800) {
+                        return callViaGet();
+                    }
+                    if (postErr && postErr.message === "HTML_FALLBACK_REQUIRED") {
+                        throw new Error("Link SCRIPT_URL (/exec) chưa được cập nhật 'Phiên bản mới (New version)' trên Google Apps Script.");
+                    }
+                    throw postErr;
+                });
+            }
+
+            // 2. CẦU NỐI TỰ ĐỘNG (POLYFILL): Chuyển mọi lệnh google.script.run sang callAppsScriptAPI khi chạy trên admin.quan-workspace.com
             (function initExternalDomainBridge() {
-                if (typeof window.google !== "undefined" && window.google.script && window.google.script.run) {
+                if (IS_NATIVE_GAS) {
                     return; // Đang chạy trực tiếp trong iframe của Google Apps Script thì giữ nguyên kênh native
                 }
                 function createRunner(successHandler, failureHandler, userObject) {
@@ -1176,36 +1231,19 @@
                             }
                             return function() {
                                 const args = Array.prototype.slice.call(arguments);
-                                window.fetch(SCRIPT_URL, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                                    body: JSON.stringify({ action: String(prop), args: args }),
-                                    redirect: "follow"
-                                })
-                                .then(function(response) { return response.text(); })
-                                .then(function(text) {
-                                    let data;
-                                    try {
-                                        data = JSON.parse(text);
-                                    } catch (parseErr) {
-                                        throw new Error("Phản hồi từ Google Apps Script không phải JSON hợp lệ. Hãy kiểm tra lại quyền Deploy (Anyone) và cập nhật New Version.");
-                                    }
-                                    if (data && data.__rpcError) {
-                                        if (typeof failureHandler === "function") failureHandler(new Error(data.message || "Lỗi thực thi API"), userObject);
-                                        else console.error("GAS RPC Error [" + String(prop) + "]:", data.message);
-                                        return;
-                                    }
-                                    if (typeof successHandler === "function") {
-                                        successHandler(data, userObject);
-                                    }
-                                })
-                                .catch(function(err) {
-                                    if (typeof failureHandler === "function") {
-                                        failureHandler(err, userObject);
-                                    } else {
-                                        console.error("Lỗi kết nối API [" + String(prop) + "]:", err);
-                                    }
-                                });
+                                callAppsScriptAPI(String(prop), args)
+                                    .then(function(data) {
+                                        if (typeof successHandler === "function") {
+                                            successHandler(data, userObject);
+                                        }
+                                    })
+                                    .catch(function(err) {
+                                        if (typeof failureHandler === "function") {
+                                            failureHandler(err, userObject);
+                                        } else {
+                                            console.error("Lỗi kết nối API [" + String(prop) + "]:", err);
+                                        }
+                                    });
                             };
                         }
                     });
@@ -1217,7 +1255,7 @@
                 };
             })();
 
-            // 3. Hàm kiểm tra trạng thái hệ thống (Hoạt động trên cả Google Apps Script /dev, /exec và tên miền riêng admin.quan-workspace.com)
+            // 3. Hàm kiểm tra trạng thái hệ thống ngay khi tải trang
             (function checkSystemStatus() {
                 function renderStatusUI(res) {
                     let dot = document.getElementById('sys_status_dot');
@@ -1239,18 +1277,17 @@
                     let sub = document.getElementById('sys_status_subtext');
                     if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
                     if (txt) { txt.innerText = 'DISCONNECTED'; txt.style.color = '#FFB3B3'; }
-                    if (sub) { sub.innerText = 'Lỗi kết nối máy chủ Google'; }
+                    if (sub) { sub.innerText = (err && err.message) ? err.message : 'Lỗi kết nối máy chủ Google'; }
                     console.error("Lỗi kiểm tra trạng thái:", err && err.message ? err.message : err);
                 }
 
-                if (typeof google !== "undefined" && google.script && google.script.run) {
+                if (IS_NATIVE_GAS) {
                     google.script.run
                         .withSuccessHandler(renderStatusUI)
                         .withFailureHandler(renderErrorUI)
                         .getSystemStatusAPI();
                 } else {
-                    window.fetch(SCRIPT_URL + "?action=getSystemStatusAPI", { method: "GET" })
-                        .then(response => response.json())
+                    callAppsScriptAPI("getSystemStatusAPI", [])
                         .then(renderStatusUI)
                         .catch(renderErrorUI);
                 }
@@ -3971,7 +4008,7 @@
         document.getElementById('adminQuoteModalOverlay').style.display = 'none';
       }
 
-      function renderAdminQuoteItemsModal() {
+function renderAdminQuoteItemsModal() {
         const tbody = document.getElementById('aq-items-tbody');
         let html = '';
         let grandTotal = 0;
@@ -3988,7 +4025,7 @@
                 <div style="font-weight:700; color:var(--navy);">${it.name}</div>
                 ${it.note ? `<div style="font-size:11px; color:#B45309;">Mô tả KH: ${it.note}</div>` : ''}
               </td>
-              <td>${it.isCustom ? `<input type="text" value="${it.sku \vert{}\vert{} ''}" onchange="currentAdminQuote.items[${i}].sku=this.value" placeholder="SKU (tùy chọn)" style="width:100px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; font-size:11px;">` : `<strong>${it.sku}</strong>`}</td>
+              <td>${it.isCustom ? `<input type="text" value="${it.sku || ''}" onchange="currentAdminQuote.items[${i}].sku=this.value" placeholder="SKU (tùy chọn)" style="width:100px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; font-size:11px;">` : `<strong>${it.sku}</strong>`}</td>
               <td>${it.spec || it.unit || '-'}</td>
               <td style="text-align:center; font-weight:700;">${it.quantity}</td>
               <td style="text-align:right; color:var(--text-sub);">${refP > 0 ? refP.toLocaleString('vi-VN') + 'đ' : '<span style="color:#E65100">Chờ xác minh</span>'}</td>
@@ -10113,17 +10150,24 @@ function executeLogin(btnElement) {
     btnElement.style.opacity = '0.7';
     btnElement.disabled = true;
 
-    google.script.run
-    .withFailureHandler(err => {
-        // Bắt lỗi khi máy chủ Google từ chối thực thi (Do thiếu quyền hoặc sai cú pháp)
-        macUI.alert("Lỗi máy chủ: " + err.message + "\n\n💡 Mẹo: Hãy quay lại tab Apps Script, chọn một hàm bất kỳ và bấm nút 'Chạy' để cấp quyền cho hệ thống.", "Lỗi Kết Nối");
-        btnElement.innerHTML = originalText;
-        btnElement.style.opacity = '1';
-        btnElement.disabled = false;
-    })
-    .withSuccessHandler(res => {
-        if(res.success) {
-// XỬ LÝ LOGIC "GHI NHỚ ĐĂNG NHẬP"
+    let isHandled = false;
+    let loginWatchdog = setTimeout(() => {
+        if (!isHandled) {
+            isHandled = true;
+            btnElement.innerHTML = originalText;
+            btnElement.style.opacity = '1';
+            btnElement.disabled = false;
+            macUI.alert("Máy chủ phản hồi quá thời gian chờ (15s).\n\n💡 Mẹo: Hãy vào Google Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Chỉnh sửa -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)'.", "Quá thời gian kết nối");
+        }
+    }, 15000);
+
+    function handleLoginSuccess(res) {
+        if (isHandled) return;
+        isHandled = true;
+        clearTimeout(loginWatchdog);
+
+        if(res && res.success) {
+            // XỬ LÝ LOGIC "GHI NHỚ ĐĂNG NHẬP"
             if (document.getElementById('rememberMe').checked) {
                 localStorage.setItem('savedUser', user);
                 localStorage.setItem('savedPass', pass);
@@ -10153,12 +10197,43 @@ function executeLogin(btnElement) {
                 loadDataRealtime();
             }, 600);
         } else {
-            macUI.alert(res.message, "Sai thông tin");
+            macUI.alert((res && res.message) ? res.message : "Account ID hoặc Mật khẩu không chính xác!", "Sai thông tin");
             btnElement.innerHTML = originalText;
             btnElement.style.opacity = '1';
             btnElement.disabled = false;
         }
-    }).checkLoginAPI(user, pass);
+    }
+
+    function handleLoginFailure(err) {
+        if (isHandled) return;
+        isHandled = true;
+        clearTimeout(loginWatchdog);
+        let errMsg = (err && err.message) ? err.message : String(err || "Không thể kết nối máy chủ");
+        macUI.alert("Lỗi máy chủ: " + errMsg + "\n\n💡 Mẹo: Hãy vào tab Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Chỉnh sửa -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)'.", "Lỗi Kết Nối");
+        btnElement.innerHTML = originalText;
+        btnElement.style.opacity = '1';
+        btnElement.disabled = false;
+    }
+
+    try {
+        if (typeof IS_NATIVE_GAS !== "undefined" && IS_NATIVE_GAS) {
+            google.script.run
+                .withFailureHandler(handleLoginFailure)
+                .withSuccessHandler(handleLoginSuccess)
+                .checkLoginAPI(user, pass);
+        } else if (typeof callAppsScriptAPI === "function") {
+            callAppsScriptAPI("checkLoginAPI", [user, pass])
+                .then(handleLoginSuccess)
+                .catch(handleLoginFailure);
+        } else {
+            google.script.run
+                .withFailureHandler(handleLoginFailure)
+                .withSuccessHandler(handleLoginSuccess)
+                .checkLoginAPI(user, pass);
+        }
+    } catch (e) {
+        handleLoginFailure(e);
+    }
 }
 
 // --- HÀM XỬ LÝ ĐĂNG XUẤT ---
