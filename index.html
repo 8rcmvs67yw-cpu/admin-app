@@ -1110,15 +1110,17 @@
         </div>
 <script>
             // Link Web App URL (/exec) chính thức của Google Apps Script
-            let SCRIPT_URL = localStorage.getItem("B2B_CUSTOM_SCRIPT_URL") || "https://script.google.com/macros/s/AKfycbxYl6BARU3jGNdTrdRMTi1P0WKno-tXUDaLMk0z6anMWSrzEfX6ygw0p_S-HzD0fgwU/exec";
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYl6BARU3jGNdTrdRMTi1P0WKno-tXUDaLMk0z6anMWSrzEfX6ygw0p_S-HzD0fgwU/exec";
 
+            // Kiểm tra xem trang có đang chạy trực tiếp bên trong iframe của Google Apps Script hay không
             const IS_NATIVE_GAS = (typeof window.google !== "undefined" && window.google.script && window.google.script.run);
 
-            // 1. HÀM GỌI API ĐA TẦNG (JSONP <script> vượt CORS 100% + Fetch GET/POST)
+            // 1. HÀM GỌI REST API ĐA NĂNG CHO TÊN MIỀN RIÊNG (admin.quan-workspace.com) & FILE LOCAL (file://)
             function callAppsScriptAPI(actionName, argsArray) {
                 const args = Array.isArray(argsArray) ? argsArray : [];
                 const payloadObj = { action: String(actionName), args: args };
 
+                // Đính kèm tham số tường minh để tương thích 100% với cả bản Deploy cũ và bản Deploy mới trên Apps Script
                 if (actionName === "checkLoginAPI") {
                     payloadObj.user = args[0] !== undefined ? args[0] : "";
                     payloadObj.pass = args[1] !== undefined ? args[1] : "";
@@ -1131,127 +1133,89 @@
                 const bodyStr = JSON.stringify(payloadObj);
                 const cleanUrl = SCRIPT_URL.split("?")[0];
 
-                function buildQueryUrl(callbackName) {
+                function parseGasText(text) {
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        if (text && (text.indexOf("<!DOCTYPE html>") !== -1 || text.indexOf("<html") !== -1)) {
+                            if (text.indexOf("accounts.google.com") !== -1 || text.indexOf("ServiceLogin") !== -1) {
+                                throw new Error("Bản Deploy trên Apps Script chưa mở quyền 'Bất kỳ ai (Anyone)'.");
+                            }
+                            throw new Error("HTML_FALLBACK_REQUIRED");
+                        }
+                        throw new Error("Phản hồi từ máy chủ không phải định dạng JSON hợp lệ.");
+                    }
+                    if (data && data.__rpcError) {
+                        throw new Error(data.message || "Lỗi thực thi API trên Google Apps Script.");
+                    }
+                    return data;
+                }
+
+                function buildGetFallbackUrl() {
                     let qs = "?action=" + encodeURIComponent(actionName);
                     if (actionName === "getDashboardData" && payloadObj.branch) {
                         qs += "&branch=" + encodeURIComponent(payloadObj.branch);
                     } else if (actionName === "checkLoginAPI") {
                         qs += "&user=" + encodeURIComponent(payloadObj.user) + "&pass=" + encodeURIComponent(payloadObj.pass);
                     }
-                    if (bodyStr.length < 4500) {
+                    if (bodyStr.length < 1800) {
                         qs += "&payload=" + encodeURIComponent(bodyStr);
-                    }
-                    if (callbackName) {
-                        qs += "&callback=" + encodeURIComponent(callbackName) + "&_t=" + Date.now();
                     }
                     return cleanUrl + qs;
                 }
 
-                function callViaJsonp() {
-                    return new Promise(function(resolve, reject) {
-                        const cbName = "__gasJsonp_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-                        const scriptEl = document.createElement("script");
-                        let isDone = false;
-
-                        const timer = setTimeout(function() {
-                            if (isDone) return;
-                            isDone = true;
-                            cleanup();
-                            reject(new Error("JSONP_TIMEOUT"));
-                        }, 14000);
-
-                        function cleanup() {
-                            clearTimeout(timer);
-                            try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
-                            if (scriptEl && scriptEl.parentNode) {
-                                scriptEl.parentNode.removeChild(scriptEl);
-                            }
-                        }
-
-                        window[cbName] = function(data) {
-                            if (isDone) return;
-                            isDone = true;
-                            cleanup();
-                            if (data && data.__rpcError) {
-                                reject(new Error(data.message || "Lỗi thực thi API trên Apps Script."));
-                            } else {
-                                resolve(data);
-                            }
-                        };
-
-                        scriptEl.src = buildQueryUrl(cbName);
-                        scriptEl.async = true;
-
-                        scriptEl.onload = function() {
-                            if (!isDone) {
-                                isDone = true;
-                                cleanup();
-                                reject(new Error("JSONP_NOT_DEPLOYED"));
-                            }
-                        };
-
-                        scriptEl.onerror = function() {
-                            if (!isDone) {
-                                isDone = true;
-                                cleanup();
-                                reject(new Error("JSONP_NETWORK_ERROR"));
-                            }
-                        };
-
-                        (document.head || document.body || document.documentElement).appendChild(scriptEl);
-                    });
-                }
-
-                function callViaFetch() {
-                    function parseGasResponse(text) {
-                        let data;
-                        try {
-                            data = JSON.parse(text);
-                        } catch (e) {
-                            throw new Error("Link SCRIPT_URL (/exec) chưa được cập nhật 'Phiên bản mới (New version)' hoặc chưa để quyền 'Bất kỳ ai (Anyone)'.");
-                        }
-                        if (data && data.__rpcError) {
-                            throw new Error(data.message || "Lỗi thực thi API.");
-                        }
-                        return data;
-                    }
-
-                    if (actionName === "getSystemStatusAPI" || actionName === "getTranslationsAPI") {
-                        return window.fetch(buildQueryUrl(""), {
-                            method: "GET",
-                            mode: "cors",
-                            redirect: "follow",
-                            credentials: "omit"
-                        })
-                        .then(function(r) { return r.text(); })
-                        .then(parseGasResponse);
-                    }
-
-                    return window.fetch(cleanUrl, {
-                        method: "POST",
+                function callViaGet() {
+                    return window.fetch(buildGetFallbackUrl(), {
+                        method: "GET",
                         mode: "cors",
                         redirect: "follow",
-                        credentials: "omit",
-                        headers: { "Content-Type": "text/plain;charset=utf-8" },
-                        body: bodyStr
+                        credentials: "omit"
                     })
                     .then(function(r) { return r.text(); })
-                    .then(parseGasResponse);
-                }
-
-                if (bodyStr.length < 4500) {
-                    return callViaJsonp().catch(function() {
-                        return callViaFetch();
+                    .then(function(text) {
+                        try {
+                            return parseGasText(text);
+                        } catch (err) {
+                            if (err.message === "HTML_FALLBACK_REQUIRED") {
+                                throw new Error("Link SCRIPT_URL (/exec) chưa được cập nhật 'Phiên bản mới (New version)' trên Google Apps Script.");
+                            }
+                            throw err;
+                        }
                     });
                 }
 
-                return callViaFetch();
+                // Các hàm đọc trạng thái hoặc chạy trên giao thức file:// với dữ liệu nhỏ thì ưu tiên gọi GET trực tiếp
+                if (actionName === "getSystemStatusAPI" || actionName === "getTranslationsAPI" || (window.location.protocol === "file:" && bodyStr.length < 1800)) {
+                    return callViaGet();
+                }
+
+                // Gọi POST với text/plain để không phát sinh CORS Preflight OPTIONS; nếu mạng chặn hoặc trả về HTML thì tự động chuyển sang GET
+                return window.fetch(cleanUrl, {
+                    method: "POST",
+                    mode: "cors",
+                    redirect: "follow",
+                    credentials: "omit",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: bodyStr
+                })
+                .then(function(r) { return r.text(); })
+                .then(parseGasText)
+                .catch(function(postErr) {
+                    if (bodyStr.length < 1800) {
+                        return callViaGet();
+                    }
+                    if (postErr && postErr.message === "HTML_FALLBACK_REQUIRED") {
+                        throw new Error("Link SCRIPT_URL (/exec) chưa được cập nhật 'Phiên bản mới (New version)' trên Google Apps Script.");
+                    }
+                    throw postErr;
+                });
             }
 
-            // 2. CẦU NỐI TỰ ĐỘNG (POLYFILL) CHO TÊN MIỀN RIÊNG
+            // 2. CẦU NỐI TỰ ĐỘNG (POLYFILL): Chuyển mọi lệnh google.script.run sang callAppsScriptAPI khi chạy trên admin.quan-workspace.com
             (function initExternalDomainBridge() {
                 if (IS_NATIVE_GAS) {
-                    return;
+                    return; // Đang chạy trực tiếp trong iframe của Google Apps Script thì giữ nguyên kênh native
                 }
                 function createRunner(successHandler, failureHandler, userObject) {
                     return new Proxy({}, {
@@ -1277,7 +1241,7 @@
                                         if (typeof failureHandler === "function") {
                                             failureHandler(err, userObject);
                                         } else {
-                                            console.warn("Chờ kết nối API [" + String(prop) + "]:", err && err.message ? err.message : err);
+                                            console.error("Lỗi kết nối API [" + String(prop) + "]:", err);
                                         }
                                     });
                             };
@@ -1291,127 +1255,7 @@
                 };
             })();
 
-            // 3. HÀM XỬ LÝ ĐĂNG NHẬP TRỰC TIẾP (Đặt ngay tại khối Script đầu trang để nút Đăng nhập luôn nhạy 100%)
-            window.executeLogin = function(btnElement) {
-                let userEl = document.getElementById('loginUser');
-                let passEl = document.getElementById('loginPass');
-                let user = userEl ? userEl.value.trim() : "";
-                let pass = passEl ? passEl.value : "";
-
-                function showMsg(msg, title) {
-                    if (typeof macUI !== "undefined" && macUI && typeof macUI.alert === "function") {
-                        macUI.alert(msg, title || "Thông báo");
-                    } else {
-                        alert((title ? "[" + title + "] " : "") + msg);
-                    }
-                }
-
-                if (!user || !pass) {
-                    showMsg("Vui lòng nhập đầy đủ Account ID và Mật khẩu!", "Lỗi Đăng Nhập");
-                    return;
-                }
-
-                if (!btnElement) {
-                    btnElement = document.querySelector('#lotteLoginOverlay button[onclick*="executeLogin"]');
-                }
-                let originalText = btnElement ? btnElement.innerHTML : '<span>Đăng nhập</span>';
-                if (btnElement) {
-                    btnElement.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang xác thực...';
-                    btnElement.style.background = '#008081';
-                    btnElement.style.opacity = '0.7';
-                    btnElement.disabled = true;
-                }
-
-                let isHandled = false;
-                let loginWatchdog = setTimeout(function() {
-                    if (!isHandled) {
-                        isHandled = true;
-                        if (btnElement) {
-                            btnElement.innerHTML = originalText;
-                            btnElement.style.opacity = '1';
-                            btnElement.disabled = false;
-                        }
-                        showMsg("Máy chủ phản hồi quá thời gian chờ (15s). Vui lòng kiểm tra lại kết nối hoặc bản Deploy.", "Quá thời gian kết nối");
-                    }
-                }, 15000);
-
-                function handleLoginSuccess(res) {
-                    if (isHandled) return;
-                    isHandled = true;
-                    clearTimeout(loginWatchdog);
-
-                    if (res && res.success) {
-                        let remEl = document.getElementById('rememberMe');
-                        if (remEl && remEl.checked) {
-                            localStorage.setItem('savedUser', user);
-                            localStorage.setItem('savedPass', pass);
-                        } else {
-                            localStorage.removeItem('savedUser');
-                            localStorage.removeItem('savedPass');
-                        }
-                        localStorage.removeItem('actionPass');
-
-                        localStorage.setItem('userId', user);
-                        localStorage.setItem('userBranch', res.branch);
-                        localStorage.setItem('userRole', res.role);
-
-                        let subEl = document.getElementById('pageSubtitle');
-                        if (subEl) subEl.innerText = "Cửa hàng: " + res.branch;
-
-                        let overlay = document.getElementById('lotteLoginOverlay');
-                        if (overlay) overlay.style.opacity = '0';
-                        setTimeout(function() {
-                            if (overlay) overlay.style.display = 'none';
-                            if (btnElement) {
-                                btnElement.innerHTML = originalText;
-                                btnElement.style.opacity = '1';
-                                btnElement.disabled = false;
-                            }
-                            if (typeof applyPermissionsUI === "function") applyPermissionsUI();
-                            if (typeof loadDataRealtime === "function") loadDataRealtime();
-                            if (typeof initOrRefreshExecDashboard === "function") initOrRefreshExecDashboard();
-                            if (typeof window.loadAdminQuotes === "function") window.loadAdminQuotes();
-                        }, 600);
-                    } else {
-                        showMsg((res && res.message) ? res.message : "Account ID hoặc Mật khẩu không chính xác!", "Sai thông tin");
-                        if (btnElement) {
-                            btnElement.innerHTML = originalText;
-                            btnElement.style.opacity = '1';
-                            btnElement.disabled = false;
-                        }
-                    }
-                }
-
-                function handleLoginFailure(err) {
-                    if (isHandled) return;
-                    isHandled = true;
-                    clearTimeout(loginWatchdog);
-                    let errMsg = (err && err.message) ? err.message : String(err || "Không thể kết nối máy chủ");
-                    showMsg("Lỗi máy chủ: " + errMsg, "Lỗi Kết Nối");
-                    if (btnElement) {
-                        btnElement.innerHTML = originalText;
-                        btnElement.style.opacity = '1';
-                        btnElement.disabled = false;
-                    }
-                }
-
-                try {
-                    if (IS_NATIVE_GAS) {
-                        google.script.run
-                            .withFailureHandler(handleLoginFailure)
-                            .withSuccessHandler(handleLoginSuccess)
-                            .checkLoginAPI(user, pass);
-                    } else {
-                        callAppsScriptAPI("checkLoginAPI", [user, pass])
-                            .then(handleLoginSuccess)
-                            .catch(handleLoginFailure);
-                    }
-                } catch (e) {
-                    handleLoginFailure(e);
-                }
-            };
-
-            // 4. HÀM KIỂM TRA TRẠNG THÁI HỆ THỐNG
+            // 3. Hàm kiểm tra trạng thái hệ thống ngay khi tải trang
             (function checkSystemStatus() {
                 function renderStatusUI(res) {
                     let dot = document.getElementById('sys_status_dot');
@@ -1434,6 +1278,7 @@
                     if (dot) { dot.style.background = '#E60012'; dot.style.animation = 'none'; }
                     if (txt) { txt.innerText = 'DISCONNECTED'; txt.style.color = '#FFB3B3'; }
                     if (sub) { sub.innerText = (err && err.message) ? err.message : 'Lỗi kết nối máy chủ Google'; }
+                    console.error("Lỗi kiểm tra trạng thái:", err && err.message ? err.message : err);
                 }
 
                 if (IS_NATIVE_GAS) {
@@ -2482,27 +2327,7 @@
             btn.disabled = false;
 
             if (!ketQua || ketQua.error) {
-              if (ketQua && ketQua.quotaExceeded) {
-                macUI.prompt(
-                  ketQua.error + "\n\n💡 Cách khắc phục: Dán mã Gemini API Key mới (lấy miễn phí tại aistudio.google.com/app/apikey) vào ô bên dưới để lưu và quét tiếp ngay lập tức:",
-                  "Hết hạn mức Quota AI",
-                  "AIzaSy..."
-                ).then(function(newKey) {
-                  if (newKey && newKey.trim() !== "") {
-                    google.script.run
-                      .withSuccessHandler(function(resKey) {
-                        if (resKey && resKey.success) {
-                          ct_goiAIQuetHoaDon();
-                        } else {
-                          macUI.alert((resKey && resKey.message) ? resKey.message : "Không thể lưu API Key.", "Lỗi");
-                        }
-                      })
-                      .luuApiKeyChungTuAPI(newKey.trim());
-                  }
-                });
-              } else {
-                macUI.alert("Không thể đọc hóa đơn: " + (ketQua ? ketQua.error : "Không nhận được phản hồi từ Hệ thống"), "Lỗi xử lý");
-              }
+              macUI.alert("Không thể đọc hóa đơn: " + (ketQua ? ketQua.error : "Không nhận được phản hồi từ Hệ thống"), "Lỗi xử lý");
               return;
             }
 
@@ -4273,12 +4098,7 @@ function renderAdminQuoteItemsModal() {
         }).updateAdminQuoteAPI(payload);
       }
 
-      setTimeout(() => {
-        const loginOv = document.getElementById('lotteLoginOverlay');
-        if (loginOv && loginOv.style.display === 'none') {
-          loadAdminQuotes();
-        }
-      }, 2500);
+      setTimeout(loadAdminQuotes, 2500);
     </script>
 <!-- OVERLAY CHI TIẾT BÁO GIÁ (WIDE MODAL CHUẨN APPLE NATIVE × LOTTE B2B) -->
     <div class="right-panel-overlay" id="quoteDetailModal" style="display: none; z-index: 1000000;">
@@ -10337,7 +10157,7 @@ function executeLogin(btnElement) {
             btnElement.innerHTML = originalText;
             btnElement.style.opacity = '1';
             btnElement.disabled = false;
-            macUI.alert("Máy chủ phản hồi quá thời gian chờ.\n\n💡 Mẹo: Hãy vào tab Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Bấm biểu tượng Cây bút -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)'.", "Quá thời gian kết nối");
+            macUI.alert("Máy chủ phản hồi quá thời gian chờ (15s).\n\n💡 Mẹo: Hãy vào Google Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Chỉnh sửa -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)'.", "Quá thời gian kết nối");
         }
     }, 15000);
 
@@ -10347,6 +10167,7 @@ function executeLogin(btnElement) {
         clearTimeout(loginWatchdog);
 
         if(res && res.success) {
+            // XỬ LÝ LOGIC "GHI NHỚ ĐĂNG NHẬP"
             if (document.getElementById('rememberMe').checked) {
                 localStorage.setItem('savedUser', user);
                 localStorage.setItem('savedPass', pass);
@@ -10356,6 +10177,7 @@ function executeLogin(btnElement) {
             }
             localStorage.removeItem('actionPass');
 
+            // Lưu thông tin Phân quyền vào LocalStorage
             localStorage.setItem('userId', user);
             localStorage.setItem('userBranch', res.branch);
             localStorage.setItem('userRole', res.role);
@@ -10369,11 +10191,10 @@ function executeLogin(btnElement) {
                 btnElement.innerHTML = originalText;
                 btnElement.style.opacity = '1';
                 btnElement.disabled = false;
+                // Kích hoạt phân quyền ngay sau khi đăng nhập
                 applyPermissionsUI();
+                // Bắt đầu load dữ liệu
                 loadDataRealtime();
-                if (typeof window.loadAdminQuotes === 'function') {
-                    window.loadAdminQuotes();
-                }
             }, 600);
         } else {
             macUI.alert((res && res.message) ? res.message : "Account ID hoặc Mật khẩu không chính xác!", "Sai thông tin");
@@ -10382,39 +10203,6 @@ function executeLogin(btnElement) {
             btnElement.disabled = false;
         }
     }
-
-    function handleLoginFailure(err) {
-        if (isHandled) return;
-        isHandled = true;
-        clearTimeout(loginWatchdog);
-        let errMsg = (err && err.message) ? err.message : String(err || "Không thể kết nối máy chủ");
-        macUI.alert("Lỗi máy chủ: " + errMsg + "\n\n💡 Mẹo: Hãy vào tab Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Bấm biểu tượng Cây bút -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)', hoặc bấm vào chữ DISCONNECTED ở góc trái màn hình để dán Link /exec mới.", "Lỗi Kết Nối");
-        btnElement.innerHTML = originalText;
-        btnElement.style.opacity = '1';
-        btnElement.disabled = false;
-    }
-
-    try {
-        if (typeof IS_NATIVE_GAS !== "undefined" && IS_NATIVE_GAS) {
-            google.script.run
-                .withFailureHandler(handleLoginFailure)
-                .withSuccessHandler(handleLoginSuccess)
-                .checkLoginAPI(user, pass);
-        } else if (typeof callAppsScriptAPI === "function") {
-            callAppsScriptAPI("checkLoginAPI", [user, pass])
-                .then(handleLoginSuccess)
-                .catch(handleLoginFailure);
-        } else {
-            google.script.run
-                .withFailureHandler(handleLoginFailure)
-                .withSuccessHandler(handleLoginSuccess)
-                .checkLoginAPI(user, pass);
-        }
-    } catch (e) {
-        handleLoginFailure(e);
-    }
-}
-
 
     function handleLoginFailure(err) {
         if (isHandled) return;
@@ -11135,13 +10923,8 @@ function logoutUser() {
         }
     });
 
-   // Mở sẵn danh sách sau khi Admin đã đăng nhập
-    setTimeout(() => {
-        const loginOv = document.getElementById('lotteLoginOverlay');
-        if (loginOv && loginOv.style.display === 'none') {
-            window.loadAdminQuotes();
-        }
-    }, 1500);
+    // Mở sẵn danh sách ngay khi tải trang nếu Admin vào thẳng
+    setTimeout(() => { window.loadAdminQuotes(); }, 1500);
     // ==============================================================
     // ENGINE QUÉT MÃ VẠCH TRÊN HEADER (AUTO PARSE BILL POS 24 SỐ)
     // ==============================================================
@@ -11274,7 +11057,6 @@ function logoutUser() {
     .audit-table th { background: #FFFFFF; color: #64748B; font-weight: 700; border-bottom: 1px solid #E8ECE7; padding: 8px; font-size: 11px; }
     .audit-table td { padding: 10px 8px; border-bottom: 1px solid #F0F5F0; font-size: 12px; vertical-align: middle; }
     .audit-table tr:last-child td { border-bottom: none; }
-</style>
 
 <div id="pendingModalOverlay">
     <div class="pending-modal" id="pendingModalBox">
