@@ -1714,35 +1714,84 @@
       
       <!-- Cụm công cụ góc phải (Filter + Đồng hồ + Menu 3 chấm) -->
       <div style="display: flex; align-items: center; gap: 12px;">
-          <!-- Nút Filter Lịch sử (Ẩn mặc định, chỉ hiện ở Tab 4) -->
+        <!-- Nút Filter Lịch sử (Ẩn mặc định, chỉ hiện ở Tab 4) -->
           <div id="historySearchWrapper" style="display: none; position: relative;">
-              <button type="button" onclick="toggleHistorySearch(event)" style="width: 38px; height: 38px; background: var(--white); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-                  <i class="fa-solid fa-filter" style="color: var(--navy); font-size: 14px;"></i>
+              <button type="button" id="historyFilterBtn" onclick="toggleHistorySearch(event)" style="height: 38px; padding: 0 12px; gap: 6px; background: var(--white); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+                  <i class="fa-solid fa-filter" style="color: var(--primary); font-size: 13px;"></i>
+                  <span id="historyFilterCountBadge" style="font-size: 11.5px; font-weight: 800; color: var(--navy);">100%</span>
               </button>
               
-<!-- Popover tìm kiếm thả xuống -->
-              <div id="historySearchDropdown" class="tile-dropdown" style="top: 45px; right: 0; min-width: 320px; padding: 16px; cursor: default; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 12px 36px rgba(0,0,0,0.12); border-radius: 14px; z-index: 9999;">
-                  <div style="font-size: 11px; font-weight: 800; color: var(--text-sub); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-sliders" style="margin-right: 6px;"></i><span data-i18n="Bộ lọc tìm kiếm">Bộ lọc tìm kiếm</span></div>
+              <!-- Popover tìm kiếm thông minh (Apple iOS Glassmorphism) -->
+              <div id="historySearchDropdown" class="tile-dropdown" style="top: 48px; right: 0; width: 390px; padding: 20px; cursor: default; border: 1px solid rgba(255,255,255,0.65); box-shadow: 0 20px 48px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.04); border-radius: 20px; z-index: 99999; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);">
                   
-                  <div class="input-box" style="min-height: 40px; border: 1px solid var(--border); margin-bottom: 16px; border-radius: 8px;">
-                      <i class="fa-solid fa-magnifying-glass" style="color: var(--text-sub); font-size: 13px; margin-right: 8px;"></i>
-                      <input type="text" id="historySearchInput" onkeyup="filterHistoryTable()" placeholder="Nhập Số bill, Khách hàng, MST..." data-i18n="Tìm kiếm tên công ty, mã số thuế hoặc địa chỉ..." style="font-size: 13px; width: 100%;">
+                  <!-- Header Bộ lọc -->
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                          <div style="width: 28px; height: 28px; border-radius: 8px; background: #E0F2F1; color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                              <i class="fa-solid fa-sliders"></i>
+                          </div>
+                          <div>
+                              <div style="font-size: 13px; font-weight: 800; color: var(--navy); letter-spacing: -0.2px;" data-i18n="Tìm kiếm thông minh">Tìm kiếm thông minh</div>
+                              <div id="histSmartSummary" style="font-size: 10.5px; font-weight: 600; color: var(--text-sub);">Đang hiển thị toàn bộ đơn hàng</div>
+                          </div>
+                      </div>
+                      <button type="button" onclick="resetHistoryFilter()" style="background: #F2F2F7; color: var(--navy); border: none; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s;" onmouseover="this.style.background='#E5E5EA'" onmouseout="this.style.background='#F2F2F7'">
+                          <i class="fa-solid fa-rotate-left" style="font-size: 10px;"></i> Đặt lại
+                      </button>
                   </div>
                   
-                  <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end;">
+                  <!-- Ô nhập từ khóa thông minh có nút Xóa nhanh -->
+                  <div class="input-box" style="min-height: 42px; border: 1.5px solid var(--border); margin-bottom: 14px; border-radius: 12px; background: #F8FCFD; padding: 0 12px; position: relative;">
+                      <i class="fa-solid fa-magnifying-glass" style="color: var(--primary); font-size: 14px; margin-right: 10px;"></i>
+                      <input type="text" id="historySearchInput" oninput="filterHistoryTable()" placeholder="Số bill, Tên công ty, MST, SĐT, PO..." style="font-size: 13px; font-weight: 600; width: 100%; border: none; background: transparent; outline: none; color: var(--navy); padding-right: 22px;">
+                      <i class="fa-solid fa-circle-xmark" onclick="document.getElementById('historySearchInput').value=''; filterHistoryTable();" style="color: #C7C7CC; font-size: 14px; cursor: pointer;" title="Xóa từ khóa"></i>
+                  </div>
+
+                  <!-- Chọn nhanh khoảng thời gian (Quick Date Chips) -->
+                  <div style="margin-bottom: 12px;">
+                      <label style="font-size: 10px; font-weight: 800; color: var(--text-sub); margin-bottom: 6px; display: block; letter-spacing: 0.4px; text-transform: uppercase;">MỐC THỜI GIAN NHANH</label>
+                      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                          <button type="button" class="hist-date-chip active" onclick="applyQuickHistoryDate('all', this)" style="padding: 6px 4px; border-radius: 8px; border: 1px solid var(--primary); background: var(--primary); color: white; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s;">Tất cả</button>
+                          <button type="button" class="hist-date-chip" onclick="applyQuickHistoryDate('today', this)" style="padding: 6px 4px; border-radius: 8px; border: 1px solid var(--border); background: var(--white); color: var(--navy); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Hôm nay</button>
+                          <button type="button" class="hist-date-chip" onclick="applyQuickHistoryDate('7days', this)" style="padding: 6px 4px; border-radius: 8px; border: 1px solid var(--border); background: var(--white); color: var(--navy); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">7 ngày</button>
+                          <button type="button" class="hist-date-chip" onclick="applyQuickHistoryDate('month', this)" style="padding: 6px 4px; border-radius: 8px; border: 1px solid var(--border); background: var(--white); color: var(--navy); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Tháng này</button>
+                      </div>
+                  </div>
+                  
+                  <!-- Chọn Từ ngày - Đến ngày chi tiết -->
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; margin-bottom: 14px;">
                       <div>
-                          <label style="font-size: 10px; font-weight: 700; color: var(--text-sub); margin-bottom: 6px; display: block; letter-spacing: 0.3px;" data-i18n="TỪ NGÀY">TỪ NGÀY</label>
-                          <input type="date" id="historyStartDate" class="vat-input" style="margin-bottom: 0; font-size: 12px; font-weight: 600; color: var(--navy); border-radius: 8px;">
+                          <label style="font-size: 10px; font-weight: 800; color: var(--text-sub); margin-bottom: 5px; display: block; letter-spacing: 0.3px;"><i class="fa-regular fa-calendar-minus" style="margin-right: 4px; color: var(--primary);"></i>TỪ NGÀY</label>
+                          <input type="date" id="historyStartDate" onchange="filterHistoryTable()" class="vat-input" style="margin-bottom: 0; font-size: 12.5px; font-weight: 700; color: var(--navy); border-radius: 10px; background: #F2F2F7; border: 1px solid var(--border); height: 38px;">
                       </div>
                       <div>
-                          <label style="font-size: 10px; font-weight: 700; color: var(--text-sub); margin-bottom: 6px; display: block; letter-spacing: 0.3px;" data-i18n="ĐẾN NGÀY">ĐẾN NGÀY</label>
-                          <input type="date" id="historyEndDate" class="vat-input" style="margin-bottom: 0; font-size: 12px; font-weight: 600; color: var(--navy); border-radius: 8px;">
+                          <label style="font-size: 10px; font-weight: 800; color: var(--text-sub); margin-bottom: 5px; display: block; letter-spacing: 0.3px;"><i class="fa-regular fa-calendar-plus" style="margin-right: 4px; color: var(--primary);"></i>ĐẾN NGÀY</label>
+                          <input type="date" id="historyEndDate" onchange="filterHistoryTable()" class="vat-input" style="margin-bottom: 0; font-size: 12.5px; font-weight: 700; color: var(--navy); border-radius: 10px; background: #F2F2F7; border: 1px solid var(--border); height: 38px;">
                       </div>
-                      <div>
-                          <button type="button" onclick="filterHistoryTable()" style="height: 36px; width: 36px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0, 128, 129, 0.2); transition: 0.2s;" title="Tìm kiếm theo ngày" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 10px rgba(0, 128, 129, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0, 128, 129, 0.2)';">
-                              <i class="fa-solid fa-magnifying-glass"></i>
-                          </button>
+                  </div>
+
+                  <!-- Lọc theo Trạng thái Giao hàng -->
+                  <div style="margin-bottom: 14px;">
+                      <label style="font-size: 10px; font-weight: 800; color: var(--text-sub); margin-bottom: 6px; display: block; letter-spacing: 0.4px; text-transform: uppercase;">TRẠNG THÁI ĐƠN HÀNG</label>
+                      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                          <button type="button" class="hist-kho-filter active" data-val="" onclick="setHistKhoFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--primary); background: var(--primary); color: white; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s;">Tất cả</button>
+                          <button type="button" class="hist-kho-filter" data-val="active" onclick="setHistKhoFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--border); background: var(--white); color: var(--text-sub); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Đang xử lý</button>
+                          <button type="button" class="hist-kho-filter" data-val="Đã giao" onclick="setHistKhoFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--border); background: var(--white); color: var(--text-sub); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Đã giao</button>
+                          <button type="button" class="hist-kho-filter" data-val="Đã hủy" onclick="setHistKhoFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--border); background: var(--white); color: var(--text-sub); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Đã hủy</button>
                       </div>
+                      <input type="hidden" id="historyKhoStatus" value="">
+                  </div>
+                  
+                  <!-- Lọc theo Trạng thái VAT -->
+                  <div style="margin-bottom: 4px;">
+                      <label style="font-size: 10px; font-weight: 800; color: var(--text-sub); margin-bottom: 6px; display: block; letter-spacing: 0.4px; text-transform: uppercase;">TRẠNG THÁI HÓA ĐƠN VAT</label>
+                      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                          <button type="button" class="hist-vat-filter active" data-val="" onclick="setHistVatFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--primary); background: var(--primary); color: white; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s;">Tất cả</button>
+                          <button type="button" class="hist-vat-filter" data-val="Chờ xuất" onclick="setHistVatFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--border); background: var(--white); color: var(--text-sub); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Chờ xuất</button>
+                          <button type="button" class="hist-vat-filter" data-val="Đã xuất" onclick="setHistVatFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--border); background: var(--white); color: var(--text-sub); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Đã xuất</button>
+                          <button type="button" class="hist-vat-filter" data-val="Không xuất" onclick="setHistVatFilter(this)" style="padding: 5px 11px; border-radius: 14px; border: 1px solid var(--border); background: var(--white); color: var(--text-sub); font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;">Không xuất</button>
+                      </div>
+                      <input type="hidden" id="historyVatStatus" value="">
                   </div>
               </div>
           </div>
@@ -4743,7 +4792,7 @@ function renderAdminQuoteItemsModal() {
       </div>
     </div>
 
-    <script>
+<script>
       function parseVNOrIsoDateToMs(dateStr) {
         if (!dateStr) return 0;
         let clean = String(dateStr).trim().split(' ')[0];
@@ -4919,7 +4968,7 @@ function renderAdminQuoteItemsModal() {
         let elDRev = document.getElementById('exec-kpi-revenue-delta');
         elDRev.innerText = dRev.txt; elDRev.style.color = dRev.color; elDRev.style.background = dRev.bg;
 
-        // 2. BIỂU ĐỒ DONUT CHUẨN BẢNG MÀU XANH NGỌC LOTTE B2B (#008081 / #20B1AA)
+        // 2. BIỂU ĐỒ DONUT
         let donutMode = document.getElementById('execDonutMode').value;
         let slices = [];
         let centerTop = curM.total;
@@ -4975,17 +5024,9 @@ function renderAdminQuoteItemsModal() {
         }
 
         renderExecDonutSVG(slices, centerTop, centerSub);
-
-        // 3. BIỂU ĐỒ CỘT CHỒNG THỜI GIAN XỬ LÝ TRUNG BÌNH (LEAD TIME)
         renderExecLeadTimeSVG(currOrders);
-
-        // 4. BẢNG NĂNG SUẤT PICKER (KHO)
         renderExecPickerTable(currOrders);
-
-        // 5. BẢNG NĂNG SUẤT TÀI XẾ (GIAO HÀNG)
         renderExecDriverTable(currOrders);
-
-        // 6. COMBO CHART BIẾN ĐỘNG ĐƠN HÀNG & DOANH THU
         renderExecComboSVG(currOrders);
       }
 
@@ -5027,7 +5068,7 @@ function renderAdminQuoteItemsModal() {
                 <span>${s.label}</span>
               </div>
               <div style="font-weight: 700; color: var(--navy);">
-                ${dispVal} <span style="font-weight: 500; color: var(--text-sub);">(${pct}%)</span>
+                ${dispVal} <span style="font-weight: 500; color: var(--text-sub); font-size: 12px;">(${pct}%)</span>
               </div>
             </div>
           `;
@@ -5038,129 +5079,97 @@ function renderAdminQuoteItemsModal() {
       function renderExecLeadTimeSVG(currOrders) {
         let mode = document.getElementById('execLeadTimeMode').value;
         let groups = new Map();
-
         let sorted = [...currOrders].sort((a, b) => a._dateMs - b._dateMs);
+
         sorted.forEach(o => {
           let d = new Date(o._dateMs || Date.now());
-          let key = '', label1 = '', label2 = '';
-          if (mode === 'day') {
-            let dd = String(d.getDate()).padStart(2, '0');
-            let mm = String(d.getMonth() + 1).padStart(2, '0');
-            key = `${dd}/${mm}`;
-            label1 = key;
-          } else {
-            let dayNum = d.getDate();
-            let wIdx = Math.min(4, Math.floor((dayNum - 1) / 7) + 1);
-            let mm = String(d.getMonth() + 1).padStart(2, '0');
-            let sDay = String((wIdx - 1) * 7 + 1).padStart(2, '0');
-            let eDay = String(Math.min(31, wIdx * 7)).padStart(2, '0');
-            key = `W${wIdx}-${mm}`;
-            label1 = `Tuần ${wIdx}`;
-            label2 = `${sDay}/${mm} - ${eDay}/${mm}`;
-          }
-          if (!groups.has(key)) groups.set(key, { label1, label2, totalH: 0, count: 0 });
+          let dd = String(d.getDate()).padStart(2, '0');
+          let mm = String(d.getMonth() + 1).padStart(2, '0');
+          let key = mode === 'week' ? `Tuần ${Math.min(4, Math.floor((d.getDate() - 1) / 7) + 1)}/${mm}` : `${dd}/${mm}`;
+          if (!groups.has(key)) groups.set(key, { label: key, count: 0, totalLead: 0 });
           let g = groups.get(key);
-          g.totalH += parseOrderLeadTimeHours(o);
           g.count++;
+          g.totalLead += parseOrderLeadTimeHours(o);
         });
 
-        let bucketArr = Array.from(groups.values()).slice(-4);
-        if (bucketArr.length === 0) {
-          bucketArr = [{ label1: 'Chưa có dữ liệu', label2: '', totalH: 0, count: 1 }];
+        let pts = Array.from(groups.values()).slice(-6);
+        if (pts.length === 0) pts = [{ label: '--/--', count: 1, totalLead: 0 }];
+
+        let maxH = 8;
+        let leftX = 32, rightX = 320, baseY = 165, chartH = 135;
+        let stepX = (rightX - leftX) / Math.max(1, pts.length);
+        let barsHtml = '', xLabelsHtml = '', gridHtml = '';
+
+        for (let s = 0; s <= 4; s++) {
+          let y = baseY - (s / 4) * chartH;
+          let val = (maxH / 4) * s;
+          gridHtml += `
+            <line x1="${leftX}" y1="${y}" x2="${rightX}" y2="${y}" stroke="#E5E5EA" stroke-dasharray="3 3"></line>
+            <text x="${leftX - 6}" y="${y + 3}" text-anchor="end" font-size="9.5" font-weight="600" fill="#86868B">${val}h</text>`;
         }
 
-        let maxH = 12;
-        let barsSvg = '';
-
-        bucketArr.forEach((b) => {
-          let avgTotal = b.count > 0 ? Number((b.totalH / b.count).toFixed(1)) : 0;
-          maxH = Math.max(maxH, Math.ceil(avgTotal + 2));
-        });
-
-        bucketArr.forEach((b, idx) => {
-          let avgTotal = b.count > 0 ? Number((b.totalH / b.count).toFixed(1)) : 0;
-          let s1 = Number((avgTotal * 0.42).toFixed(1)); // Đặt -> Kho nhặt (#008081)
-          let s2 = Number((avgTotal * 0.28).toFixed(1)); // Kho nhặt -> Xuất kho (#20B1AA)
-          let s3 = Number(Math.max(0, avgTotal - s1 - s2).toFixed(1)); // Xuất kho -> Giao xong (#80CBC4)
-
-          let chartH = 135;
-          let baseY = 155;
+        pts.forEach((p, i) => {
+          let avg = p.count > 0 ? Math.min(maxH, p.totalLead / p.count) : 0;
+          let s1 = avg * 0.3, s2 = avg * 0.35, s3 = avg * 0.35;
           let h1 = (s1 / maxH) * chartH;
           let h2 = (s2 / maxH) * chartH;
           let h3 = (s3 / maxH) * chartH;
+          let cx = leftX + i * stepX + stepX / 2;
+          let bw = Math.min(28, stepX * 0.55);
 
-          let cx = 42 + idx * ((260) / Math.max(1, bucketArr.length)) + 28;
-          let bw = 44;
-
-          barsSvg += `
-            <rect x="${cx - bw/2}" y="${baseY - h1}" width="${bw}" height="${Math.max(0, h1)}" fill="#008081" rx="2"></rect>
-            <rect x="${cx - bw/2}" y="${baseY - h1 - h2}" width="${bw}" height="${Math.max(0, h2)}" fill="#20B1AA"></rect>
-            <rect x="${cx - bw/2}" y="${baseY - h1 - h2 - h3}" width="${bw}" height="${Math.max(0, h3)}" fill="#80CBC4" rx="3"></rect>
-            <text x="${cx}" y="${baseY - h1 - h2 - h3 - 7}" text-anchor="middle" font-size="12" font-weight="800" fill="#1D1D1F">${avgTotal}</text>
-            <text x="${cx}" y="${baseY + 16}" text-anchor="middle" font-size="11" font-weight="600" fill="#1D1D1F">${b.label1}</text>
-            <text x="${cx}" y="${baseY + 30}" text-anchor="middle" font-size="10" font-weight="500" fill="#86868B">${b.label2}</text>
-          `;
+          barsHtml += `
+            <rect x="${cx - bw / 2}" y="${baseY - h1}" width="${bw}" height="${h1}" fill="#008081"></rect>
+            <rect x="${cx - bw / 2}" y="${baseY - h1 - h2}" width="${bw}" height="${h2}" fill="#20B1AA"></rect>
+            <rect x="${cx - bw / 2}" y="${baseY - h1 - h2 - h3}" width="${bw}" height="${h3}" rx="3" fill="#80CBC4"></rect>`;
+          xLabelsHtml += `<text x="${cx}" y="185" text-anchor="middle" font-size="10" font-weight="600" fill="#86868B">${p.label}</text>`;
         });
 
-        let gridLines = '';
-        for (let step = 0; step <= 6; step++) {
-          let val = Math.round((maxH / 6) * step);
-          let y = 155 - (step / 6) * 135;
-          gridLines += `
-            <line x1="32" y1="${y}" x2="310" y2="${y}" stroke="#F2F2F7" stroke-width="1"></line>
-            <text x="24" y="${y + 4}" text-anchor="end" font-size="10.5" fill="#86868B">${val}</text>
-          `;
-        }
-
         document.getElementById('execLeadTimeSvgBox').innerHTML = `
-          <svg width="100%" height="195" viewBox="0 0 320 195" preserveAspectRatio="none">
-            ${gridLines}
-            ${barsSvg}
-          </svg>
-        `;
+          <svg width="100%" height="200" viewBox="0 0 340 200" preserveAspectRatio="none">
+            ${gridHtml}
+            ${barsHtml}
+            ${xLabelsHtml}
+          </svg>`;
       }
 
       function renderExecPickerTable(currOrders) {
         const defaultPickers = ['Quốc Duy', 'Hải Âu', 'Bảo Ngọc', 'Minh Tâm'];
         let pMap = {};
-        defaultPickers.forEach(name => { pMap[name] = { name, orders: 0, totalMin: 0, timedCnt: 0 }; });
+        defaultPickers.forEach(name => { pMap[name] = { name, orders: 0, totalMin: 0, avgMin: 0 }; });
 
         currOrders.forEach(o => {
+          let st = String(o.khoStatus || '').trim();
+          if (st === 'Đã hủy' || st === 'Chưa xử lý') return;
           let pName = String(o.pickerName || '').trim();
           if (!pName) return;
-          if (!pMap[pName]) pMap[pName] = { name: pName, orders: 0, totalMin: 0, timedCnt: 0 };
+          if (!pMap[pName]) pMap[pName] = { name: pName, orders: 0, totalMin: 0, avgMin: 0 };
           pMap[pName].orders++;
-          let skuCnt = (o.items && o.items.length > 0) ? o.items.length : 2;
-          let estMin = Math.max(2, Math.round(skuCnt * 2.1));
-          pMap[pName].totalMin += estMin;
-          pMap[pName].timedCnt++;
+          let itemCnt = (o.items && o.items.length > 0) ? o.items.length : 2;
+          pMap[pName].totalMin += Math.max(3, Math.round(itemCnt * 2.2));
         });
 
-        let list = Object.values(pMap).map(p => ({
-          name: p.name,
-          orders: p.orders,
-          avgMin: p.timedCnt > 0 ? Math.round(p.totalMin / p.timedCnt) : 0
-        }));
+        let list = Object.values(pMap).map(p => {
+          p.avgMin = p.orders > 0 ? Number((p.totalMin / p.orders).toFixed(1)) : 0;
+          return p;
+        });
 
         let sortMode = document.getElementById('execPickerSort').value;
         list.sort((a, b) => sortMode === 'speed' ? ((a.avgMin || 999) - (b.avgMin || 999)) : (b.orders - a.orders));
-
         let maxOrd = Math.max(1, ...list.map(x => x.orders));
         let tbody = document.getElementById('execPickerTableBody');
         tbody.innerHTML = list.slice(0, 5).map(p => {
           let wPct = Math.max(6, Math.round((p.orders / maxOrd) * 100));
           return `
             <tr>
-              <td style="font-weight: 600; padding-right: 8px; white-space: nowrap;">${p.name}</td>
-              <td style="padding-right: 10px;">
+              <td style="font-weight: 700;">${p.name}</td>
+              <td>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <div class="exec-hbar-track"><div class="exec-hbar-fill" style="width: ${p.orders > 0 ? wPct : 0}%;"></div></div>
-                  <span style="font-weight: 700; min-width: 22px; text-align: right; color: var(--primary);">${p.orders}</span>
+                  <div class="exec-hbar-track"><div class="exec-hbar-fill" style="width: ${wPct}%;"></div></div>
+                  <span style="font-weight: 700; min-width: 20px;">${p.orders}</span>
                 </div>
               </td>
-              <td style="text-align: right; font-weight: 600; color: var(--text-sub);">${p.orders > 0 ? p.avgMin : '-'}</td>
-            </tr>
-          `;
+              <td style="text-align: right; font-weight: 600;">${p.orders > 0 ? p.avgMin : '-'}</td>
+            </tr>`;
         }).join('');
       }
 
@@ -5168,13 +5177,11 @@ function renderAdminQuoteItemsModal() {
         const defaultDrivers = ['Châu', 'Thuận', 'Quan', 'Bin', 'Minh'];
         let dMap = {};
         defaultDrivers.forEach(name => { dMap[name] = { name, orders: 0, km: 0 }; });
-
         currOrders.forEach(o => {
           let st = String(o.khoStatus || '').trim();
           if (st !== 'Đã giao' && st !== 'Giao hàng thành công') return;
           let rawDrv = String(o.dpTaiXe || '').trim();
           if (!rawDrv || rawDrv.toLowerCase().includes('khách tới lấy')) return;
-
           let kmVal = parseCleanKm(o.km);
           let names = rawDrv.split(/[-&,]/).map(s => s.trim()).filter(Boolean);
           names.forEach(n => {
@@ -5183,27 +5190,24 @@ function renderAdminQuoteItemsModal() {
             dMap[n].km += kmVal > 0 ? kmVal : 8.5;
           });
         });
-
         let list = Object.values(dMap);
         let sortMode = document.getElementById('execDriverSort').value;
         list.sort((a, b) => sortMode === 'km' ? (b.km - a.km) : (b.orders - a.orders));
-
         let maxOrd = Math.max(1, ...list.map(x => x.orders));
         let tbody = document.getElementById('execDriverTableBody');
         tbody.innerHTML = list.slice(0, 5).map(d => {
           let wPct = Math.max(6, Math.round((d.orders / maxOrd) * 100));
           return `
             <tr>
-              <td style="font-weight: 600; padding-right: 8px; white-space: nowrap;">${d.name}</td>
-              <td style="padding-right: 10px;">
+              <td style="font-weight: 700;">${d.name}</td>
+              <td>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <div class="exec-hbar-track"><div class="exec-hbar-fill" style="width: ${d.orders > 0 ? wPct : 0}%;"></div></div>
-                  <span style="font-weight: 700; min-width: 22px; text-align: right; color: var(--primary);">${d.orders}</span>
+                  <div class="exec-hbar-track"><div class="exec-hbar-fill" style="width: ${wPct}%;"></div></div>
+                  <span style="font-weight: 700; min-width: 20px;">${d.orders}</span>
                 </div>
               </td>
-              <td style="text-align: right; font-weight: 600; color: var(--text-sub);">${d.orders > 0 ? Math.round(d.km) : 0}</td>
-            </tr>
-          `;
+              <td style="text-align: right; font-weight: 600;">${d.orders > 0 ? Math.round(d.km) : 0}</td>
+            </tr>`;
         }).join('');
       }
 
@@ -5211,7 +5215,6 @@ function renderAdminQuoteItemsModal() {
         let mode = document.getElementById('execComboMode').value;
         let groups = new Map();
         let sorted = [...currOrders].sort((a, b) => a._dateMs - b._dateMs);
-
         sorted.forEach(o => {
           let d = new Date(o._dateMs || Date.now());
           let dd = String(d.getDate()).padStart(2, '0');
@@ -5225,55 +5228,43 @@ function renderAdminQuoteItemsModal() {
             g.revM += val / 1000000;
           }
         });
-
         let pts = Array.from(groups.values()).slice(-12);
         if (pts.length === 0) pts = [{ label: '--/--', orders: 0, revM: 0 }];
-
         let maxOrd = Math.max(10, ...pts.map(p => p.orders));
         let maxRev = Math.max(20, ...pts.map(p => Math.ceil(p.revM)));
-
         let leftX = 30, rightX = 330, baseY = 158, chartH = 122;
         let stepX = (rightX - leftX) / Math.max(1, pts.length);
         let barsHtml = '', linePoints = [], dotsHtml = '', xLabelsHtml = '';
-
         pts.forEach((p, i) => {
           let cx = leftX + i * stepX + stepX / 2;
           let bw = Math.min(20, stepX * 0.58);
           let bh = (p.orders / maxOrd) * chartH;
           let ly = baseY - (p.revM / maxRev) * chartH;
-
-          barsHtml += `<rect x="${cx - bw/2}" y="${baseY - bh}" width="${bw}" height="${Math.max(2, bh)}" fill="#80CBC4" rx="3"><title>${p.label}: ${p.orders} đơn</title></rect>`;
+          barsHtml += `<rect x="${cx - bw / 2}" y="${baseY - bh}" width="${bw}" height="${bh}" rx="4" fill="#80CBC4"></rect>`;
           linePoints.push(`${cx},${ly}`);
-          dotsHtml += `<circle cx="${cx}" cy="${ly}" r="3.5" fill="#008081" stroke="#FFFFFF" stroke-width="1.2"><title>${p.label}: ${p.revM.toFixed(2)} triệu đ</title></circle>`;
-
+          dotsHtml += `<circle cx="${cx}" cy="${ly}" r="3.5" fill="#008081" stroke="#FFFFFF" stroke-width="1.5"></circle>`;
           if (pts.length <= 7 || i % 2 === 0 || i === pts.length - 1) {
-            xLabelsHtml += `<text x="${cx}" y="${baseY + 16}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#86868B">${p.label}</text>`;
+            xLabelsHtml += `<text x="${cx}" y="178" text-anchor="middle" font-size="10" font-weight="600" fill="#86868B">${p.label}</text>`;
           }
         });
-
         let gridHtml = '';
         for (let s = 0; s <= 4; s++) {
           let y = baseY - (s / 4) * chartH;
           let lVal = Math.round((maxOrd / 4) * s);
           let rVal = Math.round((maxRev / 4) * s);
           gridHtml += `
-            <line x1="${leftX}" y1="${y}" x2="${rightX}" y2="${y}" stroke="#F2F2F7" stroke-width="1"></line>
-            <text x="${leftX - 5}" y="${y + 3}" text-anchor="end" font-size="9.5" fill="#86868B">${lVal}</text>
-            <text x="${rightX + 5}" y="${y + 3}" text-anchor="start" font-size="9.5" fill="#86868B">${rVal}</text>
-          `;
+            <line x1="${leftX}" y1="${y}" x2="${rightX}" y2="${y}" stroke="#E5E5EA" stroke-dasharray="3 3"></line>
+            <text x="${leftX - 6}" y="${y + 3}" text-anchor="end" font-size="9.5" font-weight="600" fill="#86868B">${lVal}</text>
+            <text x="${rightX + 6}" y="${y + 3}" text-anchor="start" font-size="9.5" font-weight="600" fill="#008081">${rVal}</text>`;
         }
-
         document.getElementById('execComboSvgBox').innerHTML = `
-          <svg width="100%" height="190" viewBox="0 0 365 190" preserveAspectRatio="none">
-            <text x="4" y="16" font-size="9.5" font-weight="600" fill="#86868B">Số đơn</text>
-            <text x="360" y="16" text-anchor="end" font-size="9.5" font-weight="600" fill="#86868B">Doanh thu (triệu đ)</text>
+          <svg width="100%" height="195" viewBox="0 0 365 195" preserveAspectRatio="none">
             ${gridHtml}
             ${barsHtml}
             <polyline fill="none" stroke="#008081" stroke-width="2.2" points="${linePoints.join(' ')}"></polyline>
             ${dotsHtml}
             ${xLabelsHtml}
-          </svg>
-        `;
+          </svg>`;
       }
     </script>
     <!-- ================= TAB 8: HỖ TRỢ KHÁCH HÀNG B2B (3 CỘT: TICKET - NGHIỆP VỤ - CHAT) ================= -->
@@ -11683,5 +11674,49 @@ document.getElementById('newPass2').addEventListener('keypress', function (e) {
     }
     
   </script>
+  <script>
+    // Hàm chọn trạng thái VAT trong bộ lọc Lịch sử dạng Chip
+    function setHistVatFilter(btn) {
+        // Xóa trạng thái active của tất cả các nút
+        document.querySelectorAll('.hist-vat-filter').forEach(el => {
+            el.classList.remove('active');
+            el.style.background = 'var(--white)';
+            el.style.color = 'var(--text-sub)';
+            el.style.borderColor = 'var(--border)';
+        });
+        
+        // Cập nhật giao diện cho nút vừa chọn
+        btn.classList.add('active');
+        btn.style.background = 'var(--primary)';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'var(--primary)';
+        
+        // Gán giá trị bộ lọc
+        document.getElementById('historyVatStatus').value = btn.getAttribute('data-val');
+        
+        // Kích hoạt hàm lọc dữ liệu nếu đã định nghĩa
+        if(typeof filterHistoryTable === 'function') {
+            filterHistoryTable();
+        }
+    }
+
+    // Hàm thiết lập lại toàn bộ bộ lọc
+    function resetHistoryFilter() {
+        document.getElementById('historySearchInput').value = '';
+        document.getElementById('historyStartDate').value = '';
+        document.getElementById('historyEndDate').value = '';
+        
+        // Reset chip VAT về "Tất cả"
+        document.querySelectorAll('.hist-vat-filter').forEach(el => {
+            if(el.getAttribute('data-val') === '') {
+                setHistVatFilter(el);
+            }
+        });
+        
+        if(typeof filterHistoryTable === 'function') {
+            filterHistoryTable();
+        }
+    }
+</script>
 </body>
 </html>
