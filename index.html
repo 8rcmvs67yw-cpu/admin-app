@@ -1317,61 +1317,286 @@
     <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative; background: transparent;">
         
 <!-- White Card Form nổi khối -->
-        <div style="width: 100%; max-width: 380px; background: #FFFFFF; padding: 40px; border-radius: 20px; box-shadow: 0 24px 48px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02); z-index: 2; position: relative;">
+        <div style="width: 100%; max-width: 380px; background: #FFFFFF; padding: 40px; border-radius: 20px; box-shadow: 0 24px 48px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02); z-index: 2; position: relative; overflow: hidden;">
             
             <!-- Nút chọn ngôn ngữ tùy chỉnh (Custom Dropdown) -->
-            <div style="position: absolute; top: 16px; right: 16px;">
+            <div style="position: absolute; top: 16px; right: 16px; z-index: 10;">
                 <button type="button" onclick="document.getElementById('loginLangDropdown').classList.toggle('show'); event.stopPropagation();" id="currentLangLabel" style="background: #F5F5F7; color: var(--navy); border: 1px solid var(--border); height: 28px; padding: 0 12px; border-radius: 14px; font-size: 11px; font-weight: 700; outline: none; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s;">
                     🇻🇳 VI <i class="fa-solid fa-chevron-down" style="font-size: 9px; color: var(--text-sub); margin-left: 2px;"></i>
                 </button>
-                
                 <div id="loginLangDropdown" class="tile-dropdown" style="top: 34px; right: 0; min-width: 100px; padding: 6px; z-index: 9999;">
                     <div class="tile-dropdown-item" onclick="applyLanguage('vi');" style="border-radius: 6px;">🇻🇳 Tiếng Việt</div>
                     <div class="tile-dropdown-item" onclick="applyLanguage('en');" style="border-radius: 6px;">🇬🇧 English</div>
                     <div class="tile-dropdown-item" onclick="applyLanguage('kr');" style="border-radius: 6px;">🇰🇷 한국어</div>
                 </div>
             </div>
-<div style="text-align: center; margin-bottom: 32px; margin-top: 10px;">
-                <h2 style="font-size: 26px; font-weight: 700; color: #1D1D1F; margin: 0 0 8px 0;" data-i18n="Đăng nhập">Đăng nhập</h2>
-                <p style="font-size: 12px; color: #6E6E73; margin: 0; line-height: 1.5;" data-i18n="Nhập mã tài khoản và mật khẩu để truy cập Hệ thống Quản lý Đơn hàng B2B.">Nhập mã tài khoản và mật khẩu để truy cập<br>Hệ thống Quản lý Đơn hàng B2B.</p>
+
+            <!-- WRAPPER LUỒNG ĐĂNG NHẬP (MẶC ĐỊNH) -->
+            <div id="loginFormContent">
+                <div style="text-align: center; margin-bottom: 32px; margin-top: 10px;">
+                    <h2 style="font-size: 26px; font-weight: 700; color: #1D1D1F; margin: 0 0 8px 0;" data-i18n="Đăng nhập">Đăng nhập</h2>
+                    <p style="font-size: 12px; color: #6E6E73; margin: 0; line-height: 1.5;" data-i18n="Nhập mã tài khoản và mật khẩu để truy cập Hệ thống Quản lý Đơn hàng B2B.">Nhập mã tài khoản và mật khẩu để truy cập<br>Hệ thống Quản lý Đơn hàng B2B.</p>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="Mã tài khoản / Email">Mã tài khoản / Email</label>
+                    <input type="text" id="loginUser" placeholder="Mã tài khoản / Email" data-i18n="Mã tài khoản / Email" style="width: 100%; padding: 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; color: #1D1D1F; outline: none; box-sizing: border-box; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
+                </div>
+                
+                <div style="margin-bottom: 32px; position: relative;">
+                    <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="Mật khẩu">Mật khẩu</label>
+                    <input type="password" id="loginPass" placeholder="Mật khẩu" data-i18n="Mật khẩu" style="width: 100%; padding: 12px 40px 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; color: #1D1D1F; outline: none; box-sizing: border-box; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
+                    
+                    <!-- Icon con mắt bật/tắt (Đã làm sạch) -->
+                    <span style="position: absolute; right: 14px; top: 32px; color: #8E8E93; cursor: pointer; font-size: 13px; transition: 0.2s; background: white; padding-left: 5px;" onclick="const p=document.getElementById('loginPass'); const i=this.querySelector('i'); if(p.type==='password'){p.type='text'; i.className='fa-regular fa-eye'; this.style.color='#008081';}else{p.type='password'; i.className='fa-regular fa-eye-slash'; this.style.color='#8E8E93';}">
+                        <i class="fa-regular fa-eye-slash"></i>
+                    </span>
+                </div>
+                <button type="button" onclick="executeLogin(this)" style="width: 100%; background: #008081; color: #FFFFFF; border: none; padding: 14px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#006666'; this.style.boxShadow='0 8px 16px rgba(0, 128, 129, 0.2)'" onmouseout="this.style.background='#008081'; this.style.boxShadow='none'">
+                    <span data-i18n="Đăng nhập">Đăng nhập</span>
+                </button>
+              
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 500;">
+                    <a href="javascript:void(0)" onclick="showForgotForm()" style="color: #6E6E73; text-decoration: none; transition: 0.2s;" onmouseover="this.style.color='#1D1D1F'" onmouseout="this.style.color='#6E6E73'">Quên mật khẩu?</a>
+                    <label style="color: #6E6E73; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;" onmouseover="this.style.color='#1D1D1F'" onmouseout="this.style.color='#6E6E73'">
+                        <input type="checkbox" id="rememberMe" style="width: 16px; height: 16px; margin: 0; appearance: none; -webkit-appearance: none; border: 1.5px solid #D2D2D7; border-radius: 4px; display: inline-block; cursor: pointer; background-color: #fff; transition: 0.2s; position: relative;">
+                        <style>
+                            #rememberMe:checked { background-color: #008081 !important; border-color: #008081 !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E"); background-size: 12px 12px; background-position: center; background-repeat: no-repeat; }
+                        </style>
+                        <span data-i18n="Ghi nhớ đăng nhập">Ghi nhớ đăng nhập</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- WRAPPER LUỒNG ĐỔI MẬT KHẨU (ẨN MẶC ĐỊNH) -->
+            <div id="changePasswordContent" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px; margin-top: 10px;">
+                    <div style="width: 48px; height: 48px; background: #FFF4E5; color: #F59E0B; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 12px;">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h2 style="font-size: 22px; font-weight: 700; color: #1D1D1F; margin: 0 0 8px 0;">Cập nhật bảo mật</h2>
+                    <p style="font-size: 12px; color: #6E6E73; margin: 0; line-height: 1.5;">Bạn đang sử dụng mật khẩu mặc định.<br>Vui lòng đổi mật khẩu mới để tiếp tục truy cập.</p>
+                </div>
+
+                <div style="margin-bottom: 16px; position: relative;">
+                    <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Mật khẩu mới</label>
+                    <input type="password" id="newPass1" placeholder="Nhập mật khẩu mới" style="width: 100%; padding: 12px 40px 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; color: #1D1D1F; outline: none; box-sizing: border-box; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
+                </div>
+
+                <div style="margin-bottom: 24px; position: relative;">
+                    <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Xác nhận mật khẩu</label>
+                    <input type="password" id="newPass2" placeholder="Nhập lại mật khẩu mới" style="width: 100%; padding: 12px 40px 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; color: #1D1D1F; outline: none; box-sizing: border-box; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
+                </div>
+
+                <button type="button" onclick="submitNewPassword(this)" style="width: 100%; background: #008081; color: #FFFFFF; border: none; padding: 14px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#006666'; this.style.boxShadow='0 8px 16px rgba(0, 128, 129, 0.2)'" onmouseout="this.style.background='#008081'; this.style.boxShadow='none'">
+                    <span>Lưu và Đăng nhập</span>
+                </button>
             </div>
             
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="Mã tài khoản / Email">Mã tài khoản / Email</label>
-                <input type="text" id="loginUser" placeholder="Mã tài khoản / Email" data-i18n="Mã tài khoản / Email" style="width: 100%; padding: 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; color: #1D1D1F; outline: none; box-sizing: border-box; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
-            </div>
-            
-            <div style="margin-bottom: 32px; position: relative;">
-                <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="Mật khẩu">Mật khẩu</label>
-                <input type="password" id="loginPass" placeholder="Mật khẩu" data-i18n="Mật khẩu" style="width: 100%; padding: 12px 40px 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; color: #1D1D1F; outline: none; box-sizing: border-box; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
-                <i class="fa-regular fa-eye-slash" style="position: absolute; right: 14px; top: 32px; color: #8E8E93; cursor: pointer; font-size: 13px; transition: 0.2s;" onclick="const p=document.getElementById('loginPass'); if(p.type==='password'){p.type='text'; this.className='fa-regular fa-eye'; this.style.color='#008081';}else{p.type='password'; this.className='fa-regular fa-eye-slash'; this.style.color='#8E8E93';}"></i>
-            </div>
-            <button type="button" onclick="executeLogin(this)" style="width: 100%; background: #008081; color: #FFFFFF; border: none; padding: 14px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.background='#006666'; this.style.boxShadow='0 8px 16px rgba(0, 128, 129, 0.2)'" onmouseout="this.style.background='#008081'; this.style.boxShadow='none'">
-                <span data-i18n="Đăng nhập">Đăng nhập</span>
-            </button>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 500;">
-                <a href="#" style="color: #6E6E73; text-decoration: none; transition: 0.2s;" onmouseover="this.style.color='#1D1D1F'" onmouseout="this.style.color='#6E6E73'" data-i18n="Quên mật khẩu?">Quên mật khẩu?</a>
-                <label style="color: #6E6E73; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;" onmouseover="this.style.color='#1D1D1F'" onmouseout="this.style.color='#6E6E73'">
-                    <!-- Checkbox với SVG inline an toàn cho mọi trình duyệt -->
-                    <input type="checkbox" id="rememberMe" style="width: 16px; height: 16px; margin: 0; appearance: none; -webkit-appearance: none; border: 1.5px solid #D2D2D7; border-radius: 4px; display: inline-block; cursor: pointer; background-color: #fff; transition: 0.2s; position: relative;">
-                    <style>
-                        #rememberMe:checked { 
-                            background-color: #008081 !important; 
-                            border-color: #008081 !important; 
-                            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
-                            background-size: 12px 12px;
-                            background-position: center;
-                            background-repeat: no-repeat;
-                        }
-                    </style>
-                    <span data-i18n="Ghi nhớ đăng nhập">Ghi nhớ đăng nhập</span>
-                </label>
+            <!-- WRAPPER LUỒNG QUÊN MẬT KHẨU / OTP (ẨN MẶC ĐỊNH) -->
+            <div id="forgotPasswordContent" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px; margin-top: 10px;">
+                    <div style="width: 48px; height: 48px; background: #E0F2F1; color: #008081; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 12px;">
+                        <i class="fa-solid fa-unlock-keyhole"></i>
+                    </div>
+                    <h2 style="font-size: 22px; font-weight: 700; color: #1D1D1F; margin: 0 0 8px 0;">Khôi phục mật khẩu</h2>
+                    <p style="font-size: 12px; color: #6E6E73; margin: 0; line-height: 1.5;" id="otpSubText">Nhập mã tài khoản hệ thống của bạn để nhận mã xác thực (OTP) qua email.</p>
+                </div>
+
+                <!-- BƯỚC 1: NHẬP ID LẤY OTP -->
+                <div id="otpStep1">
+                    <div style="margin-bottom: 24px;">
+                        <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Mã tài khoản</label>
+                        <input type="text" id="otpUser" placeholder="Ví dụ: admin.b2bdni..." style="width: 100%; padding: 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
+                    </div>
+                    <button type="button" onclick="requestOtpCode(this)" style="width: 100%; background: #008081; color: #FFFFFF; border: none; padding: 14px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 16px;" onmouseover="this.style.background='#006666'" onmouseout="this.style.background='#008081'">
+                        Nhận mã OTP
+                    </button>
+                    <div style="text-align: center;">
+                        <a href="javascript:void(0)" onclick="showLoginForm()" style="font-size: 12px; font-weight: 600; color: #86868B; text-decoration: none;">Quay lại đăng nhập</a>
+                    </div>
+                </div>
+
+                <!-- BƯỚC 2: NHẬP OTP & ĐẶT LẠI MẬT KHẨU -->
+                <div id="otpStep2" style="display: none;">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase;">Mã xác thực (OTP)</label>
+                        <input type="text" id="otpCode" placeholder="Nhập 6 số..." maxlength="6" style="width: 100%; padding: 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 16px; font-weight: 700; text-align: center; letter-spacing: 4px; outline: none; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 10px; font-weight: 700; color: #1D1D1F; margin-bottom: 6px; text-transform: uppercase;">Mật khẩu mới</label>
+                        <input type="password" id="otpNewPass" placeholder="Tối thiểu 6 ký tự" style="width: 100%; padding: 12px 16px; border: 1.5px solid #E5E5EA; border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s;" onfocus="this.style.borderColor='#008081'; this.style.boxShadow='0 0 0 3px rgba(0, 128, 129, 0.1)'" onblur="this.style.borderColor='#E5E5EA'; this.style.boxShadow='none'">
+                    </div>
+                    <button type="button" onclick="confirmResetPassword(this)" style="width: 100%; background: #008081; color: #FFFFFF; border: none; padding: 14px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#006666'" onmouseout="this.style.background='#008081'">
+                        Xác nhận đặt lại
+                    </button>
+                    <div style="text-align: center; margin-top: 16px;">
+                        <a href="javascript:void(0)" onclick="showLoginForm()" style="font-size: 12px; font-weight: 600; color: #86868B; text-decoration: none;">Hủy</a>
+                    </div>
+                </div>
             </div>
             </div>
             </div>
             </div>
 <!-- KẾT THÚC MÀN HÌNH ĐĂNG NHẬP -->
+
+<!-- SCRIPT XỬ LÝ GIAO DIỆN VÀ OTP (ĐÃ LƯU GIỮ TÀI KHOẢN GIỮA 2 BƯỚC) -->
+<script>
+    // Biến toàn cục lưu giữ tên tài khoản đã yêu cầu OTP ở Bước 1
+    window.currentOtpUser = "";
+
+    // 1. Hàm hiển thị form Quên mật khẩu
+    function showForgotForm() {
+        try {
+            document.getElementById('loginFormContent').style.display = 'none';
+            document.getElementById('changePasswordContent').style.display = 'none';
+            document.getElementById('forgotPasswordContent').style.display = 'block';
+            document.getElementById('otpStep1').style.display = 'block';
+            document.getElementById('otpStep2').style.display = 'none';
+
+            // Nếu người dùng đã gõ sẵn tên tài khoản ở ngoài màn hình Đăng nhập thì tự điền vào ô OTP luôn
+            let typedLoginUser = document.getElementById('loginUser') ? document.getElementById('loginUser').value.trim() : "";
+            if (typedLoginUser && document.getElementById('otpUser') && !document.getElementById('otpUser').value) {
+                document.getElementById('otpUser').value = typedLoginUser;
+            }
+        } catch (error) {
+            console.error("Lỗi giao diện showForgotForm:", error);
+        }
+    }
+
+    // 2. Hàm quay lại form Đăng nhập
+    function showLoginForm() {
+        try {
+            document.getElementById('forgotPasswordContent').style.display = 'none';
+            document.getElementById('changePasswordContent').style.display = 'none';
+            document.getElementById('loginFormContent').style.display = 'block';
+        } catch (error) {
+            console.error("Lỗi giao diện showLoginForm:", error);
+        }
+    }
+
+    // 3. Hàm gửi yêu cầu lấy mã OTP
+    function requestOtpCode(btnElement) {
+        let userIdOrEmail = document.getElementById('otpUser').value.trim();
+        
+        if (!userIdOrEmail) {
+            if (typeof macUI !== 'undefined' && macUI.alert) {
+                macUI.alert("Vui lòng nhập Mã tài khoản hoặc Email hệ thống của bạn!", "Thông báo");
+            } else {
+                alert("Vui lòng nhập Mã tài khoản hoặc Email hệ thống của bạn!");
+            }
+            return;
+        }
+
+        // Lưu tên tài khoản vào biến toàn cục để dùng ở Bước 2
+        window.currentOtpUser = userIdOrEmail;
+
+        let originalText = btnElement.innerHTML;
+        btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi mã...';
+        btnElement.disabled = true;
+
+        google.script.run
+            .withSuccessHandler(function(res) {
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+                
+                if (res && res.success) {
+                    if (typeof macUI !== 'undefined' && macUI.alert) {
+                        macUI.alert(res.message, "Thông báo");
+                    } else {
+                        alert(res.message);
+                    }
+                    document.getElementById('otpStep1').style.display = 'none';
+                    document.getElementById('otpStep2').style.display = 'block';
+                } else {
+                    let msg = res ? res.message : "Không xác định";
+                    if (typeof macUI !== 'undefined' && macUI.alert) {
+                        macUI.alert("Lỗi: " + msg, "Thông báo");
+                    } else {
+                        alert("Lỗi: " + msg);
+                    }
+                }
+            })
+            .withFailureHandler(function(err) {
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+                if (typeof macUI !== 'undefined' && macUI.alert) {
+                    macUI.alert("Lỗi kết nối máy chủ: " + err.message, "Thông báo");
+                } else {
+                    alert("Lỗi kết nối máy chủ: " + err.message);
+                }
+            })
+            .requestOtpAPI(userIdOrEmail);
+    }
+
+    // 4. Hàm xác nhận OTP và Đặt lại mật khẩu
+    function confirmResetPassword(btnElement) {
+        let inputUser = document.getElementById('otpUser') ? document.getElementById('otpUser').value.trim() : "";
+        let userIdOrEmail = inputUser || window.currentOtpUser;
+        let otpCode = document.getElementById('otpCode').value.trim();
+        let newPass = document.getElementById('otpNewPass').value.trim();
+
+        if (!otpCode) {
+            if (typeof macUI !== 'undefined' && macUI.alert) {
+                macUI.alert("Vui lòng nhập mã xác thực (OTP) 6 số!", "Thông báo");
+            } else {
+                alert("Vui lòng nhập mã xác thực (OTP) 6 số!");
+            }
+            return;
+        }
+        if (!newPass) {
+            if (typeof macUI !== 'undefined' && macUI.alert) {
+                macUI.alert("Vui lòng nhập mật khẩu mới!", "Thông báo");
+            } else {
+                alert("Vui lòng nhập mật khẩu mới!");
+            }
+            return;
+        }
+
+        let originalText = btnElement.innerHTML;
+        btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
+        btnElement.disabled = true;
+
+        google.script.run
+            .withSuccessHandler(function(res) {
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+                
+                if (res && res.success) {
+                    if (typeof macUI !== 'undefined' && macUI.alert) {
+                        macUI.alert("Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.", "Thành công");
+                    } else {
+                        alert("Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.");
+                    }
+                    showLoginForm();
+                    if (document.getElementById('loginUser')) {
+                        document.getElementById('loginUser').value = userIdOrEmail;
+                    }
+                    if (document.getElementById('loginPass')) {
+                        document.getElementById('loginPass').value = "";
+                    }
+                } else {
+                    let msg = res ? res.message : "Mã OTP không hợp lệ";
+                    if (typeof macUI !== 'undefined' && macUI.alert) {
+                        macUI.alert("Lỗi: " + msg, "Thông báo");
+                    } else {
+                        alert("Lỗi: " + msg);
+                    }
+                }
+            })
+            .withFailureHandler(function(err) {
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+                if (typeof macUI !== 'undefined' && macUI.alert) {
+                    macUI.alert("Lỗi kết nối máy chủ: " + err.message, "Thông báo");
+                } else {
+                    alert("Lỗi kết nối máy chủ: " + err.message);
+                }
+            })
+            .resetPasswordWithOtpAPI(userIdOrEmail, otpCode, newPass);
+    }
+</script>
+
 <!-- ================= SIDEBAR MENU ================= -->
   <aside class="sidebar">
     <div class="logo-container">
@@ -1381,33 +1606,33 @@
           <div style="font-size: 10px; color: var(--text-sub); font-weight: 600; letter-spacing: 0.5px; line-height: 1.2;" data-i18n="DELIVERY">DELIVERY</div>
       </div>
     </div>   
-    <div class="menu">
-      <a class="menu-item active" onclick="switchTab('tab7', this); initOrRefreshExecDashboard();">
+<div class="menu">
+      <a class="menu-item active" data-role="admin" onclick="switchTab('tab7', this); initOrRefreshExecDashboard();">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-chart-pie menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
           </div>
           <span class="menu-text" data-i18n="Tổng quan hoạt động">Tổng quan hoạt động</span>
       </a>
-      <a class="menu-item" onclick="switchTab('tab1', this)">
+      <a class="menu-item" data-role="admin" onclick="switchTab('tab1', this)">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-pen-to-square menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
           </div>
           <span class="menu-text" data-i18n="Nhập liệu đơn">Nhập liệu đơn</span>
       </a>
-      <a class="menu-item" onclick="switchTab('tab9', this); khoiTaoTabChungTu();">
+      <a class="menu-item" data-role="admin" onclick="switchTab('tab9', this); khoiTaoTabChungTu();">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-file-invoice menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
           </div>
           <span class="menu-text" data-i18n="Chứng từ công nợ">Chứng từ công nợ</span>
       </a>
-      <a class="menu-item" onclick="switchTab('tab2', this); loadDataRealtime();">
+      <a class="menu-item" data-role="admin" onclick="switchTab('tab2', this); loadDataRealtime();">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-map-location-dot menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
               <span id="dispatch-badge" class="badge-notify">0</span>
           </div>
           <span class="menu-text" data-i18n="Điều phối đơn hàng">Điều phối đơn hàng</span>
       </a>
-      <a class="menu-item" onclick="switchTab('tab3', this); loadDataRealtime();">
+      <a class="menu-item" data-role="all" id="nav_tab3" onclick="switchTab('tab3', this); loadDataRealtime();">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-file-invoice-dollar menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
               <span id="vat-badge" class="badge-notify">0</span>
@@ -1415,26 +1640,26 @@
           <span class="menu-text" data-i18n="Xuất hóa đơn VAT">Xuất hóa đơn VAT</span>
       </a>
       <hr class="menu-divider">
-      <a class="menu-item" onclick="switchTab('tab4', this); loadDataRealtime();">
+      <a class="menu-item" data-role="all" onclick="switchTab('tab4', this); loadDataRealtime();">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-clock-rotate-left menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
           </div>
           <span class="menu-text" data-i18n="Lịch sử tra cứu">Lịch sử tra cứu</span>
       </a>
-      <a class="menu-item" onclick="switchTab('tab5', this);">
+      <a class="menu-item" data-role="all" onclick="switchTab('tab5', this);">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-address-book menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
           </div>
           <span class="menu-text" data-i18n="Danh sách công ty">Danh sách công ty</span>
       </a>
-      <a class="menu-item" onclick="switchTab('tab6', this); loadAdminQuotes();">
+      <a class="menu-item" data-role="admin" onclick="switchTab('tab6', this); loadAdminQuotes();">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-file-signature menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
               <span id="quote-badge" class="badge-notify">0</span>
           </div>
           <span class="menu-text">Quản lý Báo giá B2B</span>
       </a>
-      <a class="menu-item" onclick="switchTab('tab8', this); loadAdminSupportTickets();">
+ <a class="menu-item" data-role="admin" onclick="switchTab('tab8', this); loadAdminSupportTickets();">
           <div class="menu-icon-wrapper">
               <i class="fa-solid fa-headset menu-icon" style="font-size: 20px; color: var(--primary); display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;"></i>
               <span id="admin-support-badge" class="badge-notify">0</span>
@@ -3938,16 +4163,23 @@
       let adminQuotesList = [];
       let currentAdminQuote = null;
 
-      function loadAdminQuotes() {
+function loadAdminQuotes() {
         if (typeof google === 'undefined' || !google.script) return;
         google.script.run.withSuccessHandler(list => {
+          // Lọc loại bỏ báo giá dạng Nháp
           adminQuotesList = (list || []).filter(q => q.status !== 'Nháp');
+          
+          // CHỈ đếm những báo giá có trạng thái "Đã gửi yêu cầu"
           const newCount = adminQuotesList.filter(q => q.status === 'Đã gửi yêu cầu').length;
+          
+          // Cập nhật số đếm lên huy hiệu (badge) màu đỏ
           const badge = document.getElementById('quote-badge');
           if (badge) {
             badge.innerText = newCount;
+            // Chỉ hiển thị chấm đỏ nếu số lượng đếm được > 0
             badge.style.display = newCount > 0 ? 'flex' : 'none';
           }
+          
           renderAdminQuotesTable();
         }).getAdminQuotesAPI();
       }
@@ -9904,20 +10136,26 @@ let html = '';
             macUI.securePrompt("Vui lòng nhập mật khẩu quản trị để XÓA dữ liệu:", "🔐 Xác Thực Quyền", "Nhập mật khẩu...").then(pwd => {
                 verifyAdminActionPassword(pwd, () => {
                     document.body.style.cursor = 'wait';
-                    google.scruccessHandler(res => {
-                        document.body.style.cursor = 'default';
-                        if (res) {
-                            rows.forEach(r => selectedDispatchRows.delete(Number(r)));
-                            if (rows.includes(Number(currentSelectedRowIdx))) closeOrderModal();
-                            updateDispatchBulkActionUI();
-                            macUI.alert(`Đã xóa vĩnh viễn ${rows.length} đơn hàng thành công!`, "Thành công");
-                            let chkAllVat = document.getElementById('chkAllVat'); if(chkAllVat) chkAllVat.checked = false;
-                            let chkAllHistory = document.getElementById('chkAllHistory'); if(chkAllHistory) chkAllHistory.checked = false;
-                            loadDataRealtime(); 
-                        } else {
-                            macUI.alert("Lỗi hệ thống: Không thể xóa. Vui lòng kiểm tra lại Database.", "Lỗi");
-                        }
-                    }).deleteMultipleOrdersAPI(rows);
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            document.body.style.cursor = 'default';
+                            if (res) {
+                                rows.forEach(r => selectedDispatchRows.delete(Number(r)));
+                                if (rows.includes(Number(currentSelectedRowIdx))) closeOrderModal();
+                                updateDispatchBulkActionUI();
+                                macUI.alert(`Đã xóa vĩnh viễn ${rows.length} đơn hàng thành công!`, "Thành công");
+                                let chkAllVat = document.getElementById('chkAllVat'); if(chkAllVat) chkAllVat.checked = false;
+                                let chkAllHistory = document.getElementById('chkAllHistory'); if(chkAllHistory) chkAllHistory.checked = false;
+                                loadDataRealtime(); 
+                            } else {
+                                macUI.alert("Lỗi hệ thống: Không thể xóa. Vui lòng kiểm tra lại Database.", "Lỗi");
+                            }
+                        })
+                        .withFailureHandler(err => {
+                            document.body.style.cursor = 'default';
+                            macUI.alert("Lỗi kết nối máy chủ khi xóa đơn hàng: " + (err && err.message ? err.message : err), "Lỗi Hệ Thống");
+                        })
+                        .deleteMultipleOrdersAPI(rows);
                 });
             });
         });
@@ -10131,16 +10369,22 @@ let html = '';
         editOrderUI(null, rowIdx); // Tận dụng lại hàm mở Modal Edit đã có
     }
   </script>
-  <script>
+<script>
 // ==============================================================
-// LOGIC XỬ LÝ ĐĂNG NHẬP (FRONTEND STATE)
+// LOGIC XỬ LÝ ĐĂNG NHẬP, ĐỔI MẬT KHẨU LẦN ĐẦU & PHÂN QUYỀN
 // ==============================================================
+let tempLoginSession = null;
+
 function executeLogin(btnElement) {
     let user = document.getElementById('loginUser').value.trim();
-    let pass = document.getElementById('loginPass').value;
+    let pass = document.getElementById('loginPass').value.trim();
     
-    if(!user || !pass) {
-        macUI.alert("Vui lòng nhập đầy đủ Account ID và Mật khẩu!", "Lỗi Đăng Nhập");
+    if (!user || !pass) {
+        if (typeof macUI !== 'undefined' && macUI.alert) {
+            macUI.alert("Vui lòng nhập đầy đủ Account ID và Mật khẩu!", "Lỗi Đăng Nhập");
+        } else {
+            alert("Vui lòng nhập đầy đủ Account ID và Mật khẩu!");
+        }
         return;
     }
 
@@ -10157,7 +10401,9 @@ function executeLogin(btnElement) {
             btnElement.innerHTML = originalText;
             btnElement.style.opacity = '1';
             btnElement.disabled = false;
-            macUI.alert("Máy chủ phản hồi quá thời gian chờ (15s).\n\n💡 Mẹo: Hãy vào Google Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Chỉnh sửa -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)'.", "Quá thời gian kết nối");
+            let msg = "Máy chủ phản hồi quá thời gian chờ (15s).\n\n💡 Mẹo: Hãy vào Google Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Chỉnh sửa -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)'.";
+            if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert(msg, "Quá thời gian kết nối");
+            else alert(msg);
         }
     }, 15000);
 
@@ -10165,42 +10411,36 @@ function executeLogin(btnElement) {
         if (isHandled) return;
         isHandled = true;
         clearTimeout(loginWatchdog);
+        btnElement.innerHTML = originalText;
+        btnElement.style.opacity = '1';
+        btnElement.disabled = false;
 
-        if(res && res.success) {
-            // XỬ LÝ LOGIC "GHI NHỚ ĐĂNG NHẬP"
-            if (document.getElementById('rememberMe').checked) {
-                localStorage.setItem('savedUser', user);
-                localStorage.setItem('savedPass', pass);
-            } else {
-                localStorage.removeItem('savedUser');
-                localStorage.removeItem('savedPass');
+        if (res && res.success) {
+            tempLoginSession = {
+                userId: res.userId || user,
+                branch: res.branch || "Đồng Nai",
+                role: (res.role || "ADMIN").toUpperCase(),
+                remember: document.getElementById('rememberMe') ? document.getElementById('rememberMe').checked : false,
+                rawUser: user,
+                rawPass: pass
+            };
+
+            // Nếu đăng nhập lần đầu (đang dùng mật khẩu mặc định 1234@b2b hoặc cột Password đã đổi còn trống)
+            if (res.requirePasswordChange || pass === '1234@b2b') {
+                document.getElementById('loginFormContent').style.display = 'none';
+                document.getElementById('changePasswordContent').style.display = 'block';
+                let np1 = document.getElementById('newPass1');
+                let np2 = document.getElementById('newPass2');
+                if (np1) { np1.value = ''; np1.focus(); }
+                if (np2) np2.value = '';
+                return;
             }
-            localStorage.removeItem('actionPass');
 
-            // Lưu thông tin Phân quyền vào LocalStorage
-            localStorage.setItem('userId', user);
-            localStorage.setItem('userBranch', res.branch);
-            localStorage.setItem('userRole', res.role);
-            
-            document.getElementById('pageSubtitle').innerText = "Cửa hàng: " + res.branch;
-
-            let overlay = document.getElementById('lotteLoginOverlay');
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                btnElement.innerHTML = originalText;
-                btnElement.style.opacity = '1';
-                btnElement.disabled = false;
-                // Kích hoạt phân quyền ngay sau khi đăng nhập
-                applyPermissionsUI();
-                // Bắt đầu load dữ liệu
-                loadDataRealtime();
-            }, 600);
+            finalizeLoginSuccess(pass);
         } else {
-            macUI.alert((res && res.message) ? res.message : "Account ID hoặc Mật khẩu không chính xác!", "Sai thông tin");
-            btnElement.innerHTML = originalText;
-            btnElement.style.opacity = '1';
-            btnElement.disabled = false;
+            let errMsg = (res && res.message) ? res.message : "Account ID hoặc Mật khẩu không chính xác!";
+            if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert(errMsg, "Sai thông tin");
+            else alert(errMsg);
         }
     }
 
@@ -10208,11 +10448,15 @@ function executeLogin(btnElement) {
         if (isHandled) return;
         isHandled = true;
         clearTimeout(loginWatchdog);
-        let errMsg = (err && err.message) ? err.message : String(err || "Không thể kết nối máy chủ");
-        macUI.alert("Lỗi máy chủ: " + errMsg + "\n\n💡 Mẹo: Hãy vào tab Apps Script -> Triển khai -> Quản lý nội dung triển khai -> Chỉnh sửa -> Chọn 'Phiên bản mới (New version)' và quyền 'Bất kỳ ai (Anyone)'.", "Lỗi Kết Nối");
         btnElement.innerHTML = originalText;
         btnElement.style.opacity = '1';
         btnElement.disabled = false;
+        let errMsg = (err && err.message) ? err.message : String(err || "Không thể kết nối máy chủ");
+        if (typeof macUI !== 'undefined' && macUI.alert) {
+            macUI.alert("Lỗi máy chủ: " + errMsg, "Lỗi Kết Nối");
+        } else {
+            alert("Lỗi máy chủ: " + errMsg);
+        }
     }
 
     try {
@@ -10236,61 +10480,227 @@ function executeLogin(btnElement) {
     }
 }
 
+// HÀM XỬ LÝ ĐỔI MẬT KHẨU LẦN ĐẦU
+function submitNewPassword(btnElement) {
+    let pass1 = document.getElementById('newPass1').value.trim();
+    let pass2 = document.getElementById('newPass2').value.trim();
+
+    if (!pass1 || !pass2) {
+        if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert("Vui lòng nhập đầy đủ mật khẩu mới và xác nhận mật khẩu!", "Thiếu thông tin");
+        else alert("Vui lòng nhập đầy đủ mật khẩu mới và xác nhận mật khẩu!");
+        return;
+    }
+    if (pass1.length < 6) {
+        if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert("Mật khẩu mới phải có ít nhất 6 ký tự!", "Mật khẩu quá ngắn");
+        else alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
+        return;
+    }
+    if (pass1 === '1234@b2b') {
+        if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert("Vui lòng không sử dụng lại mật khẩu mặc định (1234@b2b)!", "Cập nhật bảo mật");
+        else alert("Vui lòng không sử dụng lại mật khẩu mặc định (1234@b2b)!");
+        return;
+    }
+    if (pass1 !== pass2) {
+        if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert("Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại!", "Không khớp mật khẩu");
+        else alert("Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại!");
+        return;
+    }
+
+    let targetUserId = (tempLoginSession && tempLoginSession.userId) ? tempLoginSession.userId : document.getElementById('loginUser').value.trim();
+    let originalText = btnElement.innerHTML;
+    btnElement.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Đang cập nhật bảo mật...';
+    btnElement.disabled = true;
+function onPassChangeSuccess(res) {
+        btnElement.innerHTML = originalText;
+        btnElement.disabled = false;
+        if (res && res.success) {
+            finalizeLoginSuccess(pass1);
+        } else {
+            let msg = (res && res.message) ? res.message : "Không thể đổi mật khẩu. Vui lòng thử lại!";
+            if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert(msg, "Lỗi cập nhật");
+            else alert(msg);
+        }
+    }
+
+    function onPassChangeFailure(err) {
+        btnElement.innerHTML = originalText;
+        btnElement.disabled = false;
+        let msg = (err && err.message) ? err.message : String(err || "Lỗi kết nối máy chủ");
+        if (typeof macUI !== 'undefined' && macUI.alert) macUI.alert("Lỗi kết nối: " + msg, "Lỗi hệ thống");
+        else alert("Lỗi kết nối: " + msg);
+    }
+
+    try {
+        if (typeof IS_NATIVE_GAS !== "undefined" && IS_NATIVE_GAS) {
+            google.script.run
+                .withFailureHandler(onPassChangeFailure)
+                .withSuccessHandler(onPassChangeSuccess)
+                .changePasswordAPI(targetUserId, pass1);
+        } else if (typeof callAppsScriptAPI === "function") {
+            callAppsScriptAPI("changePasswordAPI", [targetUserId, pass1])
+                .then(onPassChangeSuccess)
+                .catch(onPassChangeFailure);
+        } else {
+            google.script.run
+                .withFailureHandler(onPassChangeFailure)
+                .withSuccessHandler(onPassChangeSuccess)
+                .changePasswordAPI(targetUserId, pass1);
+        }
+    } catch (e) {
+        onPassChangeFailure(e);
+    }
+}
+
+// HÀM HOÀN TẤT ĐĂNG NHẬP & ÁP DỤNG PHÂN QUYỀN
+function finalizeLoginSuccess(activePassword) {
+    if (!tempLoginSession) return;
+
+    if (tempLoginSession.remember) {
+        localStorage.setItem('savedUser', tempLoginSession.rawUser);
+        localStorage.setItem('savedPass', activePassword || tempLoginSession.rawPass);
+    } else {
+        localStorage.removeItem('savedUser');
+        localStorage.removeItem('savedPass');
+    }
+    localStorage.removeItem('actionPass');
+
+    localStorage.setItem('userId', tempLoginSession.userId);
+    localStorage.setItem('userBranch', tempLoginSession.branch);
+    localStorage.setItem('userRole', tempLoginSession.role);
+    localStorage.setItem('lotte_logged_user', tempLoginSession.userId);
+    localStorage.setItem('lotte_logged_role', tempLoginSession.role);
+
+    let subEl = document.getElementById('pageSubtitle');
+    if (subEl) subEl.innerText = "Cửa hàng: " + tempLoginSession.branch;
+
+    let overlay = document.getElementById('lotteLoginOverlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            document.getElementById('loginFormContent').style.display = 'block';
+            document.getElementById('changePasswordContent').style.display = 'none';
+            
+            applyRolePermissions(tempLoginSession.role);
+            
+            // Xóa rỗng các biến ở form Đăng Nhập cũ để bảo mật
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+            
+            // Kích hoạt dữ liệu bảng điều khiển
+            loadDataRealtime(); 
+        }, 500);
+    }
+}
+
+// HÀM PHÂN QUYỀN GIAO DIỆN THEO ROLE (ADMIN / DVKH)
+function applyRolePermissions(role) {
+    let cleanRole = String(role || localStorage.getItem('userRole') || 'ADMIN').trim().toUpperCase();
+    let menuItems = document.querySelectorAll('.sidebar .menu .menu-item');
+    let dividers = document.querySelectorAll('.sidebar .menu .menu-divider');
+
+    if (cleanRole === 'DVKH') {
+        // Quyền DVKH: Chỉ hiển thị Xuất hóa đơn VAT (tab3), Lịch sử tra cứu (tab4), Danh sách công ty (tab5)
+        menuItems.forEach(item => {
+            let onclickAttr = item.getAttribute('onclick') || '';
+            if (onclickAttr.includes("'tab3'") || onclickAttr.includes("'tab4'") || onclickAttr.includes("'tab5'")) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        dividers.forEach(d => d.style.display = 'none');
+
+        let tab3Nav = document.getElementById('nav_tab3') || Array.from(menuItems).find(item => (item.getAttribute('onclick') || '').includes("'tab3'"));
+        if (tab3Nav) tab3Nav.click();
+        
+    } else {
+        // Quyền ADMIN: Mở toàn bộ các tab
+        menuItems.forEach(item => {
+            item.style.display = 'flex';
+        });
+        dividers.forEach(d => d.style.display = 'block');
+
+        let tab7Nav = Array.from(menuItems).find(item => (item.getAttribute('onclick') || '').includes("'tab7'"));
+        if (tab7Nav) tab7Nav.click();
+    }
+}
+
+function applyPermissionsUI() {
+    applyRolePermissions(localStorage.getItem('userRole') || 'ADMIN');
+}
+
 // --- HÀM XỬ LÝ ĐĂNG XUẤT ---
 function logoutUser() {
-    macUI.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Xác nhận Đăng xuất").then(yes => {
-        if(yes) {
-            // 1. Xóa sạch bộ nhớ tạm
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userBranch');
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('actionPass'); // Xóa mật khẩu khi đăng xuất
-            
-            // 2. Dừng bộ đếm load data realtime
-            if (typeof autoTimer !== 'undefined') {
-                clearInterval(autoTimer);
-            }
-            
-            // 3. Hiển thị lại màn hình Đăng nhập ngay lập tức và phục hồi độ sáng
-            let overlay = document.getElementById('lotteLoginOverlay');
-            overlay.style.display = 'flex';
-            
-            // Ép trình duyệt render lại frame trước khi đổi opacity để hiệu ứng mượt mà
-            requestAnimationFrame(() => {
-                overlay.style.opacity = '1';
-            });
-            
-            // 4. Đăng xuất "mềm" (Soft Reset): Khôi phục UI thay vì dùng lệnh reload để tránh lỗi trắng trang của Google
-            setTimeout(() => {
-                document.getElementById('loginPass').value = ''; // Xóa trắng mật khẩu
-                
-                // Xóa dữ liệu cũ trên màn hình để bảo mật thông tin
-                document.getElementById('gridContainer').innerHTML = '';
-                document.getElementById('vatTableBody').innerHTML = '';
-                document.getElementById('historyTableBody').innerHTML = '';
-                
-                // Đưa UI về lại tab Nhập liệu mặc định ban đầu
-                document.querySelectorAll('.menu-item')[0].click();
-            }, 400);
-        }
-    });
+    if (typeof macUI !== 'undefined' && macUI.confirm) {
+        macUI.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Xác nhận Đăng xuất").then(yes => {
+            if (yes) performLogout();
+        });
+    } else {
+        if (confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) performLogout();
+    }
 }
-// --- HÀM XỬ LÝ ĐÓNG MỞ ACCORDION ---
+
+function performLogout() {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userBranch');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('actionPass');
+    localStorage.removeItem('lotte_logged_user');
+    localStorage.removeItem('lotte_logged_role');
+
+    if (typeof autoTimer !== 'undefined') clearInterval(autoTimer);
+
+    document.getElementById('loginFormContent').style.display = 'block';
+    document.getElementById('changePasswordContent').style.display = 'none';
+    
+    if (document.getElementById('newPass1')) document.getElementById('newPass1').value = '';
+    if (document.getElementById('newPass2')) document.getElementById('newPass2').value = '';
+
+    let overlay = document.getElementById('lotteLoginOverlay');
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+    });
+
+    setTimeout(() => {
+        // Xóa toàn bộ dữ liệu tạm trên giao diện
+        document.getElementById('gridContainer').innerHTML = '';
+        document.getElementById('vatTableBody').innerHTML = '';
+        document.getElementById('historyTableBody').innerHTML = '';
+    }, 400);
+}
+
+// Thêm bắt sự kiện Enter cho ô nhập tài khoản lấy OTP
+document.getElementById('otpUser').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') requestOtpCode(document.querySelector('#otpStep1 button'));
+});
+// --- XỬ LÝ SỰ KIỆN ENTER KHI NHẬP MẬT KHẨU ---
+document.getElementById('loginPass').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        executeLogin(document.querySelector('#loginFormContent .btn-submit') || document.querySelector('#loginFormContent button'));
+    }
+});
+
+document.getElementById('newPass2').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        submitNewPassword(document.querySelector('#changePasswordContent .btn-submit') || document.querySelector('#changePasswordContent button'));
+    }
+});
+// ==============================================================
+// KHỐI HÀM BỔ TRỢ & UI (GIỮ NGUYÊN TỪ PHIÊN BẢN CŨ)
+// ==============================================================
     function toggleAccordion(stepId) {
-        // Chỉ cho phép mở 1 Tab tại 1 thời điểm (Kiểu Auto-Collapse)
         document.querySelectorAll('.step-card').forEach(card => {
             if (card.id !== stepId) card.classList.remove('active');
         });
-        // Bật/Tắt tab hiện tại
         document.getElementById(stepId).classList.toggle('active');
     }
 
-    // --- HÀM XỬ LÝ ĐÓNG MODAL ---
     function closeOrderModal() {
         document.getElementById('orderDetailModal').style.display = 'none';
         document.querySelectorAll('.mini-box').forEach(b => b.classList.remove('selected'));
         
-        // Trả lại trạng thái mặc định nếu Modal đang mở ở chế độ Fullscreen
         const modal = document.querySelector('#orderDetailModal .right-panel');
         const btnIcon = document.querySelector('#btnToggleFullscreen i');
         const sidebar = document.querySelector('.sidebar');
@@ -10303,18 +10713,13 @@ function logoutUser() {
             modal.style.borderRadius = '18px';
             if (btnIcon) btnIcon.className = 'fa-solid fa-expand';
         }
-        
-        // Luôn đảm bảo thanh Menu hiện lại bình thường khi đóng Modal
         if (sidebar) sidebar.style.zIndex = '';
     }
 
-    // Đóng Modal khi click chuột ra vùng đen bên ngoài
     document.getElementById('orderDetailModal').addEventListener('click', function(e) {
-        if(e.target === this) {
-            closeOrderModal();
-        }
+        if(e.target === this) closeOrderModal();
     });
-    // Hàm Phóng to / Thu nhỏ cửa sổ Chi tiết đơn hàng (Fullscreen Modal)
+
     function toggleModalFullscreen() {
         const modal = document.querySelector('#orderDetailModal .right-panel');
         const btnIcon = document.querySelector('#btnToggleFullscreen i');
@@ -10322,7 +10727,6 @@ function logoutUser() {
         if (!modal) return;
         
         if (modal.classList.contains('is-fullscreen')) {
-            // Trạng thái: Thu nhỏ về kích thước mặc định (Nhả z-index của Sidebar về CSS gốc)
             modal.classList.remove('is-fullscreen');
             modal.style.width = '90vw';
             modal.style.maxWidth = '960px';
@@ -10331,7 +10735,6 @@ function logoutUser() {
             if (btnIcon) btnIcon.className = 'fa-solid fa-expand';
             if (sidebar) sidebar.style.zIndex = '';
         } else {
-            // Trạng thái: Phóng to toàn màn hình (Hạ z-index của Sidebar xuống 0 để không che Modal)
             modal.classList.add('is-fullscreen');
             modal.style.width = '100vw';
             modal.style.maxWidth = '100vw';
@@ -11278,6 +11681,7 @@ function logoutUser() {
         });
       }
     }
+    
   </script>
 </body>
 </html>
